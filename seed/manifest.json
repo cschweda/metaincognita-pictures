@@ -190,5 +190,214 @@
       "fall",
       "test"
     ]
+  },
+  {
+    "file": "seed-100.jpg",
+    "tags": [
+      "beach",
+      "travel",
+      "landscape",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-103.jpg",
+    "tags": [
+      "fall",
+      "landscape",
+      "travel",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-110.jpg",
+    "tags": [
+      "sunset",
+      "landscape",
+      "fall",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-116.jpg",
+    "tags": [
+      "landscape",
+      "travel",
+      "summer",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-118.jpg",
+    "tags": [
+      "landscape",
+      "flowers",
+      "travel",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-122.jpg",
+    "tags": [
+      "night",
+      "city",
+      "travel",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-124.jpg",
+    "tags": [
+      "water",
+      "summer",
+      "travel",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-128.jpg",
+    "tags": [
+      "mountains",
+      "water",
+      "travel",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-104.jpg",
+    "tags": [
+      "still-life",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-106.jpg",
+    "tags": [
+      "flowers",
+      "spring",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-107.jpg",
+    "tags": [
+      "nature",
+      "summer",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-108.jpg",
+    "tags": [
+      "beach",
+      "travel",
+      "summer",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-111.jpg",
+    "tags": [
+      "cars",
+      "city",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-113.jpg",
+    "tags": [
+      "food",
+      "still-life",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-127.jpg",
+    "tags": [
+      "nature",
+      "spring",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-101.jpg",
+    "tags": [
+      "architecture",
+      "city",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-117.jpg",
+    "tags": [
+      "music",
+      "night",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-119.jpg",
+    "tags": [
+      "still-life",
+      "work",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-126.jpg",
+    "tags": [
+      "water",
+      "nature",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-112.jpg",
+    "tags": [
+      "nature",
+      "fall",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-121.jpg",
+    "tags": [
+      "mountains",
+      "landscape",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-125.jpg",
+    "tags": [
+      "water",
+      "landscape",
+      "fall",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-102.jpg",
+    "tags": [
+      "food",
+      "summer",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-109.jpg",
+    "tags": [
+      "nature",
+      "summer",
+      "test"
+    ]
+  },
+  {
+    "file": "seed-120.jpg",
+    "tags": [
+      "night",
+      "landscape",
+      "test"
+    ]
   }
 ]

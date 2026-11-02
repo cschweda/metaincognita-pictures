@@ -7,7 +7,7 @@ import { db } from '../../db'
 const CPU_SAMPLE_MS = 200
 const USABLE_DISK_SHARE = 0.8 // The plan is to add a Volume at 80% full.
 const ESTIMATED_PHOTO_BYTES = 7 * 1024 * 1024 // Original plus four sizes.
-const MIN_PHOTOS_FOR_AVERAGE = 50 // Fewer than this says little about real photos.
+const MIN_PHOTOS_FOR_AVERAGE = 200 // Fewer than this says little about real photos, and samples are small.
 const SIZE_CACHE_MS = 60_000
 
 function cpuTimes() {

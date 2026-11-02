@@ -19,6 +19,41 @@ const SHAPES: Shape[] = [
   { width: 1000, height: 2400, ids: [83, 96], tags: () => ['family', 'fall'] },
 ]
 
+// The second batch, each tagged by what it shows, in the same mix of shapes.
+const LANDSCAPE = { width: 2400, height: 1600 }
+const PORTRAIT = { width: 1600, height: 2400 }
+const SQUARE = { width: 2000, height: 2000 }
+const PANORAMIC = { width: 3000, height: 1000 }
+const TALL = { width: 1000, height: 2400 }
+
+const TAGGED = [
+  { id: 100, ...LANDSCAPE, tags: ['beach', 'travel', 'landscape'] },
+  { id: 103, ...LANDSCAPE, tags: ['fall', 'landscape', 'travel'] },
+  { id: 110, ...LANDSCAPE, tags: ['sunset', 'landscape', 'fall'] },
+  { id: 116, ...LANDSCAPE, tags: ['landscape', 'travel', 'summer'] },
+  { id: 118, ...LANDSCAPE, tags: ['landscape', 'flowers', 'travel'] },
+  { id: 122, ...LANDSCAPE, tags: ['night', 'city', 'travel'] },
+  { id: 124, ...LANDSCAPE, tags: ['water', 'summer', 'travel'] },
+  { id: 128, ...LANDSCAPE, tags: ['mountains', 'water', 'travel'] },
+  { id: 104, ...PORTRAIT, tags: ['still-life'] },
+  { id: 106, ...PORTRAIT, tags: ['flowers', 'spring'] },
+  { id: 107, ...PORTRAIT, tags: ['nature', 'summer'] },
+  { id: 108, ...PORTRAIT, tags: ['beach', 'travel', 'summer'] },
+  { id: 111, ...PORTRAIT, tags: ['cars', 'city'] },
+  { id: 113, ...PORTRAIT, tags: ['food', 'still-life'] },
+  { id: 127, ...PORTRAIT, tags: ['nature', 'spring'] },
+  { id: 101, ...SQUARE, tags: ['architecture', 'city'] },
+  { id: 117, ...SQUARE, tags: ['music', 'night'] },
+  { id: 119, ...SQUARE, tags: ['still-life', 'work'] },
+  { id: 126, ...SQUARE, tags: ['water', 'nature'] },
+  { id: 112, ...PANORAMIC, tags: ['nature', 'fall'] },
+  { id: 121, ...PANORAMIC, tags: ['mountains', 'landscape'] },
+  { id: 125, ...PANORAMIC, tags: ['water', 'landscape', 'fall'] },
+  { id: 102, ...TALL, tags: ['food', 'summer'] },
+  { id: 109, ...TALL, tags: ['nature', 'summer'] },
+  { id: 120, ...TALL, tags: ['night', 'landscape'] },
+]
+
 const PHOTOS_DIR = join('seed', 'photos')
 
 async function download(url: string, path: string) {
@@ -34,24 +69,28 @@ let downloaded = 0
 let skipped = 0
 const failed: string[] = []
 
-for (const { width, height, ids, tags } of SHAPES) {
-  for (const [index, id] of ids.entries()) {
-    const file = `seed-${String(id).padStart(3, '0')}.jpg`
-    const path = join(PHOTOS_DIR, file)
-    const url = `https://picsum.photos/id/${id}/${width}/${height}`
-    manifest.push({ file, tags: [...tags(index), 'test'] })
+const photos = [
+  ...SHAPES.flatMap(({ width, height, ids, tags }) =>
+    ids.map((id, index) => ({ id, width, height, tags: tags(index) }))),
+  ...TAGGED,
+]
 
-    if (existsSync(path)) {
-      skipped++
-      continue
-    }
-    try {
-      await download(url, path).catch(() => download(url, path)) // retry once
-      downloaded++
-    }
-    catch {
-      failed.push(file)
-    }
+for (const { id, width, height, tags } of photos) {
+  const file = `seed-${String(id).padStart(3, '0')}.jpg`
+  const path = join(PHOTOS_DIR, file)
+  const url = `https://picsum.photos/id/${id}/${width}/${height}`
+  manifest.push({ file, tags: [...tags, 'test'] })
+
+  if (existsSync(path)) {
+    skipped++
+    continue
+  }
+  try {
+    await download(url, path).catch(() => download(url, path)) // retry once
+    downloaded++
+  }
+  catch {
+    failed.push(file)
   }
 }
 

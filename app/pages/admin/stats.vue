@@ -111,7 +111,7 @@ const facts = computed(() => {
           Counts up to 80% disk use, at
           {{ server.photo_size_is_estimate ? 'an estimated' : 'your library\'s average of' }}
           {{ size(server.photo_bytes) }} per photo.
-          <template v-if="server.photo_size_is_estimate">It switches to your real average at 50 photos.</template>
+          <template v-if="server.photo_size_is_estimate">It switches to your real average at 200 photos.</template>
         </p>
       </div>
 
