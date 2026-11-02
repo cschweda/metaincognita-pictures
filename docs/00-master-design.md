@@ -101,7 +101,6 @@ Rules:
 - The raw token is never stored. It is minted on the first poll after approval, which is why the `devices` row is created there and not at approval. `approve` stores the name on the pairing row and resets `expires_at` to 10 minutes from then, so the frame has time to claim it.
 - `start` is limited to 12 per hour per IP and 100 pending codes overall, since it is public.
 - Code: 6 characters from an unambiguous alphabet (no 0/O/1/I), shown as `XXX-XXX`. Expires in 10 minutes. One attempt per code; rate-limit approvals.
-- Optional convenience: on `start`, email yourself a link to `/admin/pair?code=WXK7-4M` via Gmail SMTP so approving is one tap. The email is a shortcut into the same flow, not a separate mechanism.
 - Frame reports `screen.width × screen.height` and `devicePixelRatio` at pair time; stored on the device row and used to pick image variants. `start` also records the requester's IP on the pairing row for the approval screen.
 
 ## 5. Data model (SQLite)
@@ -310,6 +309,5 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 ## 12. Open questions
 
 - One admin user hard-coded, or a `users` table from the start? (Leaning: one user in `.env`, add table only if you ever share it.)
-- Email-the-pairing-link convenience: worth it in Phase 2, or wait and see if typing a 6-char code is annoying enough?
 - Scheduled filters ("Holidays" on weekends, "Everything" otherwise): same row shape as the sleep window; defer until a frame has been on the wall a month.
 - Variant sizes: are any frames going to be portrait? If so, generate variants by longest edge (as planned) and let `contain` handle it — no separate portrait set needed.
