@@ -103,7 +103,7 @@ The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/
    ```nginx
    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
    add_header Referrer-Policy no-referrer;
-   client_max_body_size 60m;
+   client_max_body_size 200M;
    ```
    Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
 
