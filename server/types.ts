@@ -45,6 +45,8 @@ export interface Device {
   token_rotated_at: string | null
   revoked: number
   current_photo_id: string | null
+  match_shape: number
+  memories_first: number
 }
 
 export interface Pairing {

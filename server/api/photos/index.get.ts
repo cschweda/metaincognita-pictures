@@ -9,7 +9,9 @@ export default defineEventHandler((event) => {
   if (Number.isNaN(before)) throw createError({ statusCode: 400, statusMessage: 'Invalid before' })
 
   const tag = typeof query.tag === 'string' ? query.tag : null
-  const clause = filterClause({ tags: tag ? [tag] : [], mode: 'any' })
+  const clause = tag === 'memories'
+    ? { sql: `strftime('%m-%d', taken_at) = strftime('%m-%d', 'now')`, params: [] }
+    : filterClause({ tags: tag ? [tag] : [], mode: 'any' })
   const search = typeof query.q === 'string' ? query.q.trim().slice(0, 100) : ''
   // LIKE wildcards in the search text are matched literally.
   const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`

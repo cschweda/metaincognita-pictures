@@ -2,8 +2,9 @@
 import { createHash } from 'node:crypto'
 import { db } from '../../db'
 import type { Photo } from '../../types'
+import { MEMORIES_FILTER, MEMORIES_SQL } from '../../utils/filters'
 
-type Entry = Pick<Photo, 'id' | 'caption'>
+type Entry = Pick<Photo, 'id' | 'caption'> & { memory?: number | null }
 
 const ORDER: Record<string, string> = {
   manual: 'position DESC',
@@ -39,12 +40,24 @@ export default defineEventHandler((event) => {
   const tag = !device && typeof query.tag === 'string' && query.tag ? query.tag : null
   const sort = !device ? (tag ? 'manual' : 'random') : device.sort in ORDER ? device.sort : 'random'
 
-  const clause = filterClause(device ? parseFilter(device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+  const clause = tag === MEMORIES_FILTER
+    ? { sql: MEMORIES_SQL, params: [] }
+    : filterClause(device ? parseFilter(device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+
+  // A square photo suits any screen. Only clear mismatches are skipped.
+  let shapeSql = ''
+  if (device?.match_shape && device.screen_w && device.screen_h && device.screen_w !== device.screen_h) {
+    shapeSql = device.screen_w > device.screen_h ? 'AND width >= height' : 'AND height >= width'
+  }
 
   const rows = db.prepare<string[], Entry>(
-    `SELECT id, caption FROM photos WHERE hidden = 0 AND ${clause.sql} ORDER BY ${ORDER[sort]}`,
+    `SELECT id, caption, ${MEMORIES_SQL} AS memory FROM photos
+     WHERE hidden = 0 AND ${clause.sql} ${shapeSql} ORDER BY ${ORDER[sort]}`,
   ).all(...clause.params)
   const entries: Entry[] = sort === 'random' ? shuffled(rows, device?.id ?? String(query.seed ?? 'admin')) : rows
+
+  // Photos from today's date in past years come first, in their usual order.
+  if (device?.memories_first) entries.sort((a, b) => Number(b.memory ?? 0) - Number(a.memory ?? 0))
 
   // Clicking a photo in the admin opens the slideshow on that photo, even if it's turned off.
   if (!device && typeof query.first === 'string') {
@@ -53,6 +66,6 @@ export default defineEventHandler((event) => {
   }
 
   const after = typeof query.after === 'string' ? entries.findIndex(entry => entry.id === query.after) : -1
-  const photos = entries.slice(after + 1, after + 1 + limit)
+  const photos = entries.slice(after + 1, after + 1 + limit).map(({ id, caption }) => ({ id, caption }))
   return { photos, next: after + 1 + limit < entries.length ? photos.at(-1)?.id ?? null : null }
 })

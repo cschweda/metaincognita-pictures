@@ -4,7 +4,22 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   devtools: { enabled: false },
   devServer: { port: 3100, host: '127.0.0.1' },
-  app: { head: { title: 'OpenMantel', meta: [{ name: 'robots', content: 'noindex' }] } },
+  app: {
+    head: {
+      title: 'OpenMantel',
+      meta: [
+        { name: 'robots', content: 'noindex' },
+        { name: 'theme-color', content: '#10181c' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-title', content: 'OpenMantel' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', href: '/icons/icon-192.png' },
+      ],
+    },
+  },
   ui: { fonts: false },
   colorMode: { preference: 'dark', fallback: 'dark' },
   icon: { provider: 'server', fallbackToApi: false, serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },

@@ -1,5 +1,5 @@
 // SSE streams to connected frames. One process (Doc 00 §2), so a Map is enough.
-export type FrameEvent = 'playlist-changed' | 'config-changed' | 'reload' | 'control'
+export type FrameEvent = 'playlist-changed' | 'config-changed' | 'reload' | 'control' | 'show'
 type Stream = ReturnType<typeof createEventStream>
 
 const streams = new Map<string, Set<Stream>>()

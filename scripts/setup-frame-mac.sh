@@ -4,10 +4,15 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | FRAME_URL=https://pictures.example.com bash
 #
+# To stop the frame later:
+#
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | bash -s -- --remove
+#
 # Chrome runs full screen in its own profile, so your normal Chrome is left alone. Chrome restarts
 # if it crashes or quits, so Cmd-Q won't stop the frame. To stop it, run this script with --remove.
 #
-# FRAME_URL is the address of your pictures server.
+# FRAME_URL is the address of your OpenMantel server. To turn the monitor off overnight, also set
+# SLEEP_START and SLEEP_END, for example SLEEP_START=22:30 SLEEP_END=06:30.
 #
 set -Eeuo pipefail
 
@@ -17,16 +22,52 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROFILE="$HOME/Library/Application Support/pictures-frame"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 DOMAIN="gui/$(id -u)"
+SLEEP_LABEL=$LABEL.display-off
+WAKE_LABEL=$LABEL.display-on
+SLEEP_PLIST="$HOME/Library/LaunchAgents/$SLEEP_LABEL.plist"
+WAKE_PLIST="$HOME/Library/LaunchAgents/$WAKE_LABEL.plist"
+
+# Writes a LaunchAgent that runs one command at HH:MM every day.
+daily_agent() {
+  local label=$1 path=$2 time=$3 command=$4
+  cat > "$path" <<AGENT
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$label</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>$command</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>$((10#${time%%:*}))</integer>
+    <key>Minute</key>
+    <integer>$((10#${time##*:}))</integer>
+  </dict>
+</dict>
+</plist>
+AGENT
+  launchctl bootout "$DOMAIN/$label" 2>/dev/null || true
+  launchctl bootstrap "$DOMAIN" "$path"
+}
 
 if [[ "${1:-}" == "--remove" ]]; then
-  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
-  rm -f "$PLIST"
+  for label in "$LABEL" "$SLEEP_LABEL" "$WAKE_LABEL"; do
+    launchctl bootout "$DOMAIN/$label" 2>/dev/null || true
+  done
+  rm -f "$PLIST" "$SLEEP_PLIST" "$WAKE_PLIST"
   echo "Frame removed. Its profile is still at $PROFILE."
   exit 0
 fi
 
 if [[ -z "$FRAME_URL" ]]; then
-  echo "Set FRAME_URL to the address of your pictures server."
+  echo "Set FRAME_URL to the address of your OpenMantel server."
   exit 1
 fi
 
@@ -75,16 +116,20 @@ PLIST_XML
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
 
+if [[ -n "${SLEEP_START:-}" && -n "${SLEEP_END:-}" ]]; then
+  daily_agent "$SLEEP_LABEL" "$SLEEP_PLIST" "$SLEEP_START" "pmset displaysleepnow"
+  daily_agent "$WAKE_LABEL" "$WAKE_PLIST" "$SLEEP_END" "caffeinate -u -t 5"
+fi
+
 # A screen saver would cover the photos.
 defaults -currentHost write com.apple.screensaver idleTime -int 0
 
 cat <<DONE
 Frame running at $FRAME_URL. Approve the code on your phone with Pair a frame.
 
-For a frame that survives power cuts, also do these once:
-  sudo pmset -a autorestart 1
-  System Settings > Users & Groups > Automatically log in as
-  (Automatic login needs FileVault to be off.)
+The frame starts when you log in. With FileVault on, a Mac waits for your password after a
+power cut, so keep a keyboard handy, or use a small battery backup.
 
-To stop the frame: bash setup-frame-mac.sh --remove
+To stop the frame:
+  curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | bash -s -- --remove
 DONE

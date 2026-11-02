@@ -34,6 +34,8 @@ export function publicDevice(device: Device) {
     paired_at: device.paired_at,
     last_seen_at: device.last_seen_at,
     current_photo_id: device.current_photo_id,
+    match_shape: device.match_shape === 1,
+    memories_first: device.memories_first === 1,
     revoked: device.revoked === 1,
     online: isFrameConnected(device.id),
     dormant: Date.now() - Date.parse(`${lastSeen.replace(' ', 'T')}Z`) > DORMANT_MS,

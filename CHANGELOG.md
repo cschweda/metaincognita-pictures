@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Show on a frame: send any photo to an online frame from the grid.
+- Monitor off overnight on Macs, with `SLEEP_START` and `SLEEP_END`.
+- Option to skip photos that don't suit a frame's screen shape.
+- On this day, in the tag dropdown and as a frame option.
+- Download all photos, as a .tar file with a manifest.
+- Add-to-home-screen support for the admin.
+- Upload progress bar, photo dates, Arrange by date, and bulk captions and dates.
+- `SECURITY.md` and Dependabot.
 - Clicking a thumbnail opens that photo in the full screen slideshow.
 - Project site for openmantel.com, published with GitHub Pages.
 - Phone remote on each online frame: previous, pause, resume, and next.
@@ -57,6 +65,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Passwords need at least 12 characters.
+- The Docker backup service takes its first snapshot at start.
+- Frame setup no longer suggests automatic login, because FileVault prevents it.
 - The project is now named OpenMantel, along with its repository and Docker image.
 - Scripts and docs no longer assume one particular server or domain.
 - Captions sit on a semi-transparent, edge-to-edge band, so they read on the lightest photos.

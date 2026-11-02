@@ -35,6 +35,8 @@ export interface Frame {
   current_photo_id: string | null
   online: boolean
   dormant: boolean
+  match_shape: boolean
+  memories_first: boolean
 }
 
 /** Finds or creates tags by name, and returns their ids. */

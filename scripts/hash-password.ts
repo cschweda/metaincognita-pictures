@@ -2,6 +2,8 @@
 // hidden prompt or from stdin, never from an argument, so it stays out of shell history.
 import argon2 from 'argon2'
 
+const MIN_LENGTH = 12
+
 function readHidden(): Promise<string> {
   return new Promise((resolve) => {
     process.stderr.write('Password: ')
@@ -31,8 +33,8 @@ async function readPiped(): Promise<string> {
 }
 
 const password = process.stdin.isTTY ? await readHidden() : await readPiped()
-if (!password) {
-  console.error('No password given.')
+if (password.length < MIN_LENGTH) {
+  console.error(`Use at least ${MIN_LENGTH} characters. This password protects your photos on the internet.`)
   process.exit(1)
 }
 

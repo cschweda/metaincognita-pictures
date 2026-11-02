@@ -9,6 +9,7 @@ interface Photo {
   hidden: number
   position: number
   caption: string | null
+  taken_at: string | null
   tags: Tag[]
 }
 interface UploadResponse {
@@ -28,6 +29,13 @@ const tagFilter = useTagFilter()
 if (typeof route.query.tag === 'string') tagFilter.value = route.query.tag
 const busy = ref(false)
 const search = ref('')
+const uploadDone = ref(0)
+const uploadTotal = ref(0)
+const onlineFrames = ref<Frame[]>([])
+const sentTo = ref('')
+const bulkCaption = ref('')
+const bulkDate = ref('')
+const confirmingArrange = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 watch(search, () => {
   clearTimeout(searchTimer)
@@ -54,8 +62,57 @@ async function loadPhotos(before?: number) {
   loading.value = false
 }
 
+async function loadFrames() {
+  const { devices } = await $fetch<{ devices: Frame[] }>('/api/devices')
+  onlineFrames.value = devices.filter(device => device.online)
+}
+
+async function sendToFrame(photo: Photo, frame: Frame) {
+  await $fetch(`/api/devices/${frame.id}/control`, {
+    method: 'POST',
+    headers,
+    body: { action: 'show', photo_id: photo.id },
+  })
+  sentTo.value = `${photo.filename} is on ${frame.name} now.`
+}
+
+const frameMenu = (photo: Photo) => onlineFrames.value.map(frame => ({
+  label: frame.name,
+  onSelect: () => sendToFrame(photo, frame),
+}))
+
+async function saveDate(photo: Photo, value: string) {
+  try {
+    const result = await $fetch<{ photo: Photo }>(`/api/photos/${photo.id}`, {
+      method: 'PATCH',
+      headers,
+      body: { taken_at: value || null },
+    })
+    photo.taken_at = result.photo.taken_at
+  }
+  catch {
+    problems.value.push(`${photo.filename}: could not save the date.`)
+  }
+}
+
+function bulkPatch(body: object) {
+  return bulk(() => Promise.all(selected.value.map(id =>
+    $fetch(`/api/photos/${id}`, { method: 'PATCH', headers, body }),
+  )))
+}
+
+function arrangeByDate() {
+  if (!confirmingArrange.value) {
+    confirmingArrange.value = true
+    return
+  }
+  confirmingArrange.value = false
+  return bulk(() => $fetch('/api/photos/arrange', { method: 'POST', headers }))
+}
+
 onMounted(() => {
   loadPhotos()
+  loadFrames()
   if (!grid.value) return
   Sortable.create(grid.value, {
     handle: '[data-drag-handle]',
@@ -157,8 +214,10 @@ async function upload(event: Event) {
 
   let added = 0
   let duplicates = 0
+  uploadDone.value = 0
+  uploadTotal.value = files.length
   for (const [index, file] of files.entries()) {
-    progress.value = `Uploading ${index + 1} of ${files.length}…`
+    progress.value = `Uploading ${index + 1} of ${files.length}: ${file.name}`
     const form = new FormData()
     form.append('tags', uploadTags.value.join(','))
     form.append('photo', file)
@@ -173,7 +232,9 @@ async function upload(event: Event) {
     catch {
       problems.value.push(`${file.name}: upload failed.`)
     }
+    uploadDone.value = index + 1
   }
+  uploadTotal.value = 0
 
   input.value = ''
   progress.value = `${added} added, ${duplicates} already in the library.`
@@ -237,6 +298,8 @@ async function remove(photo: Photo) {
 
     <div aria-live="polite">
       <p v-if="progress">{{ progress }}</p>
+      <UProgress v-if="uploadTotal" :model-value="uploadDone" :max="uploadTotal" class="max-w-xl" />
+      <p v-if="sentTo">{{ sentTo }}</p>
       <p class="sr-only">{{ announcement }}</p>
       <ul v-if="problems.length" class="text-error">
         <li v-for="problem in problems" :key="problem">{{ problem }}</li>
@@ -254,6 +317,9 @@ async function remove(photo: Photo) {
       >
         {{ selected.length ? 'Clear selection' : 'Select all shown' }}
       </UButton>
+      <UButton variant="soft" color="neutral" :disabled="busy" @click="arrangeByDate">
+        {{ confirmingArrange ? 'Replace my order with dates?' : 'Arrange by date' }}
+      </UButton>
     </div>
 
     <section
@@ -263,6 +329,20 @@ async function remove(photo: Photo) {
     >
       <p class="text-xl font-bold">{{ selected.length }} selected</p>
       <TagPicker v-model="bulkTags" label="Tags" :options="tagNames" />
+      <div class="grid gap-3 sm:grid-cols-2">
+        <form class="flex items-end gap-2" @submit.prevent="bulkPatch({ caption: bulkCaption })">
+          <UFormField label="Caption for all selected" class="grow">
+            <UInput v-model="bulkCaption" name="bulk-caption" maxlength="200" class="w-full" />
+          </UFormField>
+          <UButton type="submit" size="sm" variant="soft" :disabled="busy">Set</UButton>
+        </form>
+        <form class="flex items-end gap-2" @submit.prevent="bulkPatch({ taken_at: bulkDate || null })">
+          <UFormField label="Date for all selected" class="grow">
+            <UInput v-model="bulkDate" name="bulk-date" type="date" class="w-full" />
+          </UFormField>
+          <UButton type="submit" size="sm" variant="soft" :disabled="busy">Set</UButton>
+        </form>
+      </div>
       <div class="flex flex-wrap gap-2">
         <UButton size="sm" :disabled="!bulkTags.length || busy" @click="applyTags('add')">Add tags</UButton>
         <UButton size="sm" variant="soft" :disabled="!bulkTags.length || busy" @click="applyTags('remove')">Remove tags</UButton>
@@ -328,12 +408,24 @@ async function remove(photo: Photo) {
           :aria-label="`Caption for ${photo.filename}`"
           @change="saveCaption(photo, ($event.target as HTMLInputElement).value)"
         />
+        <UInput
+          :model-value="photo.taken_at?.slice(0, 10) ?? ''"
+          :name="`date-${photo.id}`"
+          type="date"
+          :aria-label="`Date for ${photo.filename}`"
+          @change="saveDate(photo, ($event.target as HTMLInputElement).value)"
+        />
         <p v-if="photo.tags.length" class="text-sm text-muted truncate">
           {{ photo.tags.map(tag => tag.name).join(', ') }}
         </p>
-        <UButton size="sm" variant="ghost" color="error" class="self-start" @click="remove(photo)">
-          {{ confirming === photo.id ? 'Really delete?' : 'Delete' }}
-        </UButton>
+        <div class="flex flex-wrap gap-1">
+          <UDropdownMenu v-if="onlineFrames.length" :items="frameMenu(photo)">
+            <UButton size="sm" variant="ghost" color="neutral">Show on a frame</UButton>
+          </UDropdownMenu>
+          <UButton size="sm" variant="ghost" color="error" @click="remove(photo)">
+            {{ confirming === photo.id ? 'Really delete?' : 'Delete' }}
+          </UButton>
+        </div>
       </li>
     </ul>
 

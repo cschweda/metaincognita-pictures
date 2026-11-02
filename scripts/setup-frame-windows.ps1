@@ -6,7 +6,7 @@
 
 $ErrorActionPreference = 'Stop'
 $url = $env:FRAME_URL
-if (-not $url) { throw 'Set $env:FRAME_URL to the address of your pictures server.' }
+if (-not $url) { throw 'Set $env:FRAME_URL to the address of your OpenMantel server.' }
 
 $browsers = @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",

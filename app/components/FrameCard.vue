@@ -224,6 +224,18 @@ const sleepValue = (value: string) => value || null
         label="Fill the bars with a blurred copy of the photo"
         @update:model-value="save({ backdrop: $event === true ? 'blur' : 'solid' })"
       />
+      <UCheckbox
+        :model-value="frame.match_shape"
+        :name="`shape-${frame.id}`"
+        label="Skip photos that don't suit this screen's shape"
+        @update:model-value="save({ match_shape: $event === true })"
+      />
+      <UCheckbox
+        :model-value="frame.memories_first"
+        :name="`memories-${frame.id}`"
+        label="Show photos from this date in past years first"
+        @update:model-value="save({ memories_first: $event === true })"
+      />
     </div>
 
     <UButton size="sm" variant="ghost" color="neutral" class="self-start" :aria-expanded="expanded" @click="expanded = !expanded">

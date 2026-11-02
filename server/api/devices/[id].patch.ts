@@ -37,6 +37,12 @@ export default defineEventHandler(async (event) => {
     if (body.backdrop !== 'solid' && body.backdrop !== 'blur') bad('Invalid backdrop')
     changes.backdrop = body.backdrop
   }
+  for (const key of ['match_shape', 'memories_first']) {
+    if (key in body) {
+      if (typeof body[key] !== 'boolean') bad(`${key} must be true or false`)
+      changes[key] = body[key] ? 1 : 0
+    }
+  }
   for (const key of ['sleep_start', 'sleep_end']) {
     if (key in body) {
       const value = body[key]
@@ -54,7 +60,8 @@ export default defineEventHandler(async (event) => {
     .get(...Object.values(changes), id)
   if (!device) throw createError({ statusCode: 404, statusMessage: 'Frame not found' })
 
-  if ('filter' in changes || 'sort' in changes) pushToFrame(id, 'playlist-changed')
-  if (columns.some(column => column !== 'filter' && column !== 'sort' && column !== 'name')) pushToFrame(id, 'config-changed')
+  const PLAYLIST_COLUMNS = ['filter', 'sort', 'match_shape', 'memories_first']
+  if (columns.some(column => PLAYLIST_COLUMNS.includes(column))) pushToFrame(id, 'playlist-changed')
+  if (columns.some(column => !PLAYLIST_COLUMNS.includes(column) && column !== 'name')) pushToFrame(id, 'config-changed')
   return { device: publicDevice(device) }
 })

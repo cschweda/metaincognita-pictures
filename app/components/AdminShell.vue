@@ -18,9 +18,12 @@ const count = ref<number | null>(null)
 const tagFilter = useTagFilter()
 const { tags, loadTags } = useTags()
 
-const tagName = computed(() => tags.value.find(tag => tag.id === tagFilter.value)?.name)
+const tagName = computed(() => tagFilter.value === 'memories'
+  ? 'On this day'
+  : tags.value.find(tag => tag.id === tagFilter.value)?.name)
 const tagItems = computed(() => [
   { label: 'No tag: all photos, random order', value: 'all' },
+  { label: 'On this day', value: 'memories' },
   ...tags.value.map(tag => ({ label: `${tag.name} (${tag.photos ?? 0})`, value: tag.id })),
 ])
 

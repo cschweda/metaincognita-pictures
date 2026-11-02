@@ -26,6 +26,10 @@ export function validateFilter(value: unknown): PhotoFilter {
   return { tags: [...new Set(filter.tags)], mode: filter.mode as PhotoFilter['mode'] }
 }
 
+/** Photos taken on today's month and day. */
+export const MEMORIES_SQL = `strftime('%m-%d', taken_at) = strftime('%m-%d', 'now')`
+export const MEMORIES_FILTER = 'memories'
+
 /** SQL for matching photos, with its parameters. An empty filter matches everything. */
 export function filterClause(filter: PhotoFilter): { sql: string, params: string[] } {
   const { tags, mode } = filter

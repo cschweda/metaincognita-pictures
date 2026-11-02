@@ -28,7 +28,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  # Takes a checked database snapshot every night and keeps 14 days of them.
+  # Takes a checked database snapshot at start and every 24 hours, and keeps 14 days of them.
   backup:
     image: ghcr.io/cschweda/openmantel:latest
     build: .
@@ -37,7 +37,7 @@ services:
     environment:
       NUXT_DB_PATH: /data/pictures.db
       NUXT_PICTURES_DIR: /data
-    command: ["sh", "-c", "while true; do sleep 86400; ./scripts/backup.sh; done"]
+    command: ["sh", "-c", "sleep 60; while true; do ./scripts/backup.sh; sleep 86400; done"]
     healthcheck:
       disable: true
     volumes:

@@ -6,6 +6,7 @@ OpenMantel runs as one Node process with SQLite. Everything it stores lives in o
 
 - A server with Docker and Docker Compose. 1 GB of RAM with 2 GB of swap works, and more helps with large HEIC photos.
 - A domain or subdomain pointing at the server.
+- Room for your photos, at roughly 7 MB each, plus 2 GB for the image.
 - Ports 80 and 443 open, so Caddy can get a certificate.
 
 Follow the steps in the [README](../README.md#self-hosting) to install it. `docker compose up -d` uses the prebuilt image for `linux/amd64` and `linux/arm64`. Run `docker compose build` to build your own.
@@ -42,12 +43,17 @@ Database migrations run at startup.
 
 Your data is in the `pictures` volume: `pictures.db`, `orig/` for original photos, and `v/` for frame images.
 
-The `backup` service takes a checked database snapshot every 24 hours, in `/data/backups`, and keeps 14 days. Those snapshots are on the same disk as your photos, so back up the volume or the whole server as well. A VPS provider's backup feature does this, unless the data is on a separate attached volume.
+The `backup` service takes a checked database snapshot a minute after it starts and every 24 hours after that, in `/data/backups`, and keeps 14 days. Those snapshots are on the same disk as your photos, so back up the volume or the whole server as well. A VPS provider's backup feature does this, unless the data is on a separate attached volume.
 
 To restore:
 
 1. Run `docker compose stop app`.
-2. Restore the volume, or copy a snapshot over `/data/pictures.db` and delete `pictures.db-wal` and `pictures.db-shm` beside it.
+2. Restore the volume, or restore one snapshot, using its real file name:
+
+   ```bash
+   docker compose exec backup sh -c 'cp /data/backups/nightly-YYYYMMDD.db /data/pictures.db && rm -f /data/pictures.db-wal /data/pictures.db-shm'
+   ```
+
 3. Run `docker compose start app`.
 4. If `v/` was lost, recreate the frame images:
 

@@ -10,7 +10,7 @@ import sharp from 'sharp'
 
 const PORT = 3197
 const BASE = `http://127.0.0.1:${PORT}`
-const PASSWORD = 'test-password'
+const PASSWORD = 'test-password-long'
 const CSRF = { 'X-Requested-With': 'fetch' }
 const JSON_BODY = { ...CSRF, 'Content-Type': 'application/json' }
 
@@ -39,7 +39,13 @@ async function pairDevice(name: string) {
     headers: { 'Content-Type': 'application/json', 'X-Real-IP': `10.0.0.${Math.floor(Math.random() * 250)}` },
     body: JSON.stringify({ screen_w: 1920, screen_h: 1080, dpr: 1 }),
   })).json()
-  const approved = await adminJson('/api/pair/approve', 'POST', { code: start.code, name })
+  // Each approval uses its own session, because approvals are limited to 5 a minute per session.
+  const login = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) })
+  const approved = await fetch(`${BASE}/api/pair/approve`, {
+    method: 'POST',
+    headers: { ...JSON_BODY, cookie: cookieFrom(login) },
+    body: JSON.stringify({ code: start.code, name }),
+  })
   assert.equal(approved.status, 200)
   const poll = await fetch(`${BASE}/api/pair/poll?id=${start.pairing_id}`)
   assert.deepEqual(await poll.json(), { status: 'approved' })
@@ -209,6 +215,69 @@ test('an admin slideshow can open on a chosen photo, even one that is turned off
   assert.equal(photos[0].id, photo.id)
   const plain = await (await adminFetch('/api/frame/playlist')).json()
   assert.ok(!plain.photos.some((item: { id: string }) => item.id === photo.id))
+})
+
+test('a frame can be told to show one photo', async () => {
+  const { photo } = await upload('#666666', 'shown.jpg')
+  const { cookie } = await pairDevice('Shower')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Shower')
+
+  const stream = await fetch(`${BASE}/api/frame/events`, { headers: { cookie } })
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.equal((await adminJson(`/api/devices/${id}/control`, 'POST', { action: 'show', photo_id: 'nope' })).status, 404)
+  assert.equal((await adminJson(`/api/devices/${id}/control`, 'POST', { action: 'show', photo_id: photo.id })).status, 200)
+  const { value } = await stream.body!.getReader().read()
+  assert.match(new TextDecoder().decode(value), new RegExp(`event: show\\ndata: .*${photo.id}`))
+  await stream.body?.cancel().catch(() => undefined)
+})
+
+test('frames can skip photos that do not suit the screen', async () => {
+  const image = await sharp({ create: { width: 200, height: 400, channels: 3, background: '#777777' } }).jpeg().toBuffer()
+  const form = new FormData()
+  form.append('photo', new Blob([new Uint8Array(image)], { type: 'image/jpeg' }), 'tall.jpg')
+  const { results } = await (await adminFetch('/api/photos', { method: 'POST', headers: CSRF, body: form })).json()
+  const tall = results[0].photo.id
+
+  const { cookie } = await pairDevice('Wide')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Wide')
+  const ids = async () =>
+    (await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie } })).json()).photos.map((p: { id: string }) => p.id)
+
+  assert.ok((await ids()).includes(tall))
+  assert.equal((await adminJson(`/api/devices/${id}`, 'PATCH', { match_shape: true })).status, 200)
+  assert.ok(!(await ids()).includes(tall))
+})
+
+test('memories come first on their date, and dates can be edited', async () => {
+  const { photo } = await upload('#888888', 'old.jpg')
+  const now = new Date()
+  const date = `2019-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`
+  assert.equal((await adminJson(`/api/photos/${photo.id}`, 'PATCH', { taken_at: 'soon' })).status, 400)
+  assert.equal((await adminJson(`/api/photos/${photo.id}`, 'PATCH', { taken_at: date })).status, 200)
+
+  const { photos } = await (await adminFetch('/api/photos?tag=memories')).json()
+  assert.deepEqual(photos.map((p: { id: string }) => p.id), [photo.id])
+
+  const { cookie } = await pairDevice('Memories')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Memories')
+  await adminJson(`/api/devices/${id}`, 'PATCH', { memories_first: true, sort: 'uploaded_at' })
+  const list = await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie } })).json()
+  assert.equal(list.photos[0].id, photo.id)
+})
+
+test('the library can be arranged by date and exported', async () => {
+  assert.equal((await adminFetch('/api/photos/arrange', { method: 'POST', headers: CSRF })).status, 200)
+  assert.equal((await fetch(`${BASE}/api/photos/export`)).status, 401)
+
+  const response = await adminFetch('/api/photos/export')
+  assert.equal(response.status, 200)
+  const tar = Buffer.from(await response.arrayBuffer())
+  assert.equal(tar.length % 512, 0)
+  assert.equal(tar.subarray(0, 24).toString(), 'openmantel/manifest.json')
+  assert.equal(tar.subarray(257, 262).toString(), 'ustar')
 })
 
 test('photo search matches file names and captions, and treats wildcards literally', async () => {

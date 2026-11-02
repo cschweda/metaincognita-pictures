@@ -5,11 +5,11 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-pi.sh | FRAME_URL=https://pictures.example.com bash
 #
-# FRAME_URL is the address of your pictures server.
+# FRAME_URL is the address of your OpenMantel server.
 #
 set -Eeuo pipefail
 
-: "${FRAME_URL:?Set FRAME_URL to the address of your pictures server}"
+: "${FRAME_URL:?Set FRAME_URL to the address of your OpenMantel server}"
 SERVICE=pictures-frame.service
 SERVICE_DIR="$HOME/.config/systemd/user"
 AUTOSTART="$HOME/.config/labwc/autostart"

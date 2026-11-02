@@ -94,6 +94,13 @@ const facts = computed(() => {
   <AdminShell title="Stats">
     <LibraryStats :stats="library" :tags="tags" />
 
+    <section aria-label="Your photos" class="flex flex-col gap-2 items-start">
+      <UButton href="/api/photos/export" external download variant="soft" size="lg">Download all my photos</UButton>
+      <p class="text-muted max-w-2xl">
+        A .tar file of every original, with a list of their tags, dates, and captions.
+      </p>
+    </section>
+
     <section aria-label="Server" class="flex flex-col gap-6">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="text-4xl font-extrabold tracking-tight">Server</h2>

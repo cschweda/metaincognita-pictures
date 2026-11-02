@@ -15,8 +15,11 @@ onBeforeUnmount(() => clearInterval(timer))
 
 const detail = computed(() => {
   if (props.count === null) return 'Fills this screen'
+  const memories = props.tagName === 'On this day'
+  if (props.count === 0 && memories) return 'No photos from this date yet'
   if (props.count === 0) return props.tagName ? `No photos are tagged ${props.tagName}` : 'Add photos first'
   const photos = `${props.count} ${props.count === 1 ? 'photo' : 'photos'}`
+  if (memories) return `${photos} from this date`
   return props.tagName ? `${photos} tagged ${props.tagName}` : `All ${photos} in random order`
 })
 

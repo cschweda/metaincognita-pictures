@@ -102,6 +102,19 @@ function schedule(ms: number) {
   timer = setTimeout(advance, ms)
 }
 
+async function display(entry: Entry) {
+  const src = url(entry.id)
+  const backdrop = config.value?.backdrop === 'blur' ? url(entry.id, 640) : ''
+  await Promise.all([preload(src), backdrop ? preload(backdrop) : undefined])
+
+  const hidden = 1 - active.value
+  slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
+  const firstSlide = !slides[1 - hidden]?.id
+  active.value = hidden
+  if (firstSlide) beat() // So the admin's thumbnail fills in right away.
+  sendToWorker({ type: 'shown', url: src })
+}
+
 function sendToWorker(message: object) {
   serviceWorker?.postMessage(message)
 }
@@ -132,10 +145,8 @@ async function advance() {
   const entry = entries[cursor++]!
   if (entries.length - cursor < PAGE_LOW_WATER) await loadMore().catch(() => undefined)
 
-  const src = url(entry.id)
-  const backdrop = config.value?.backdrop === 'blur' ? url(entry.id, 640) : ''
   try {
-    await Promise.all([preload(src), backdrop ? preload(backdrop) : undefined])
+    await display(entry)
   }
   catch {
     // Not cached and no network, or deleted. Move on quickly, and pause if nothing loads.
@@ -144,12 +155,6 @@ async function advance() {
   }
 
   failures = 0
-  const hidden = 1 - active.value
-  slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
-  const firstSlide = !slides[1 - hidden]?.id
-  active.value = hidden
-  if (firstSlide) beat() // So the admin's thumbnail fills in right away.
-  sendToWorker({ type: 'shown', url: src })
   warmNext()
   if (!paused) schedule((config.value?.interval_sec ?? 30) * 1000)
 }
@@ -202,6 +207,13 @@ function listen() {
     }).catch(() => undefined)
   })
   events.addEventListener('reload', () => location.reload())
+  events.addEventListener('show', ({ data }) => {
+    clearTimeout(timer)
+    display(JSON.parse(data) as Entry).catch(() => undefined).finally(() => {
+      beat()
+      if (!paused) schedule((config.value?.interval_sec ?? 30) * 1000)
+    })
+  })
   events.addEventListener('control', ({ data }) => {
     if (data === 'next') step(1)
     else if (data === 'previous') step(-1)
