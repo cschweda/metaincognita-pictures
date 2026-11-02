@@ -7,7 +7,7 @@ A self-hosted, cloud-based digital picture frame for one user. A single Nuxt app
 
 All logic lives on the server. The frame is a kiosk that shows what it's told, and it keeps running from its local cache if the network drops.
 
-**Status:** Phase 1. You can upload, arrange, caption, and turn photos on or off. Pairing and the slideshow come next.
+**Status:** Phase 2. Frames pair with a code and show a slideshow. Tag filters and live updates come next.
 
 ## Stack
 
@@ -39,6 +39,10 @@ pnpm dev              # http://localhost:3100
 | `pnpm seed:ingest` | Upload those photos through the real route; needs the app running and `PICTURES_PASSWORD` set |
 
 Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and Safari refuses those over plain `http://localhost`.
+
+## Pairing a frame
+
+Point the frame's browser at the site, using the kiosk setup in Doc 00 §9. It shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
 
 ## Deploying
 
@@ -121,11 +125,11 @@ From Doc 06 §12:
 | Nginx headers and the app's nonce CSP present | Check with `curl -I`; CSP is set by the app |
 | Argon2id hash in place; rate limiter tested | Done in Phase 0 |
 | Device cookie rejected on `/api/photos` | Done in Phase 0 |
-| No nginx path reaches `orig/` | Deferred to Phase 2 |
+| No nginx path reaches `orig/` | Done; nginx's root is the repo folder |
 | `/v/` URLs need a session or device cookie | Done in Phase 1 |
-| Session list and revoke button | Deferred to Phase 2 |
-| Pairing approval screen shows IP and screen size | Deferred to Phase 2 |
-| Token returned once; second poll logged | Deferred to Phase 2 |
+| Session list and revoke button | Done in Phase 2 |
+| Pairing approval screen shows IP and screen size | Done in Phase 2 |
+| Token returned once; second poll logged | Done in Phase 2 |
 
 ## License
 

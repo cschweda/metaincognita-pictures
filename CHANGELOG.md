@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Roku-style pairing: frames show a code, and the admin approves it after checking the screen size and IP address.
+- Slideshow at `/` with cross-fades, the matte color, whole-photo display, and optional captions.
+- Device config and playlist routes, with `manual`, `random`, `taken_at`, and `uploaded_at` order.
+- Login session list with a sign-out button for each session.
+- Minute-by-minute expiry of old pairing codes.
 - HEIC uploads. The original is kept, and frame images are made from a converted copy.
 - Automatic compression of originals over 8 MB, and `pnpm photos:compress` for the existing library.
 - Photo upload with streaming to disk, duplicate detection, EXIF rotation, and four WebP sizes with metadata removed.
