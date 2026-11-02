@@ -175,6 +175,32 @@ test('filters choose photos by any tag or all tags, and hidden photos stay out',
   assert.equal(await count(), 0)
 })
 
+test('the remote reaches a connected frame, and only an admin can use it', async () => {
+  const { cookie } = await pairDevice('Remote')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Remote')
+  const send = (action: string) => adminJson(`/api/devices/${id}/control`, 'POST', { action })
+
+  assert.equal((await send('next')).status, 409)
+
+  const stream = await fetch(`${BASE}/api/frame/events`, { headers: { cookie } })
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.equal((await send('dance')).status, 400)
+  assert.equal((await send('next')).status, 200)
+
+  const { value } = await stream.body!.getReader().read()
+  const received = new TextDecoder().decode(value)
+  assert.match(received, /event: control\ndata: next/)
+  await stream.body?.cancel().catch(() => undefined)
+
+  const asDevice = await fetch(`${BASE}/api/devices/${id}/control`, {
+    method: 'POST',
+    headers: { ...JSON_BODY, cookie },
+    body: JSON.stringify({ action: 'next' }),
+  })
+  assert.equal(asDevice.status, 403)
+})
+
 test('photo search matches file names and captions, and treats wildcards literally', async () => {
   const { photo } = await upload('#444444', 'searchable.jpg')
   await adminJson(`/api/photos/${photo.id}`, 'PATCH', { caption: 'Sunset at 100% zoom' })

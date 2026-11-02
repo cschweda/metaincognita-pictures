@@ -1,5 +1,5 @@
 // SSE streams to connected frames. One process (Doc 00 §2), so a Map is enough.
-export type FrameEvent = 'playlist-changed' | 'config-changed' | 'reload'
+export type FrameEvent = 'playlist-changed' | 'config-changed' | 'reload' | 'control'
 type Stream = ReturnType<typeof createEventStream>
 
 const streams = new Map<string, Set<Stream>>()
@@ -20,9 +20,9 @@ export function isFrameConnected(deviceId: string): boolean {
   return streams.has(deviceId)
 }
 
-export function pushToFrame(deviceId: string, event: FrameEvent): void {
+export function pushToFrame(deviceId: string, event: FrameEvent, data = '1'): void {
   for (const stream of streams.get(deviceId) ?? []) {
-    stream.push({ event, data: '1' }).catch(() => undefined)
+    stream.push({ event, data }).catch(() => undefined)
   }
 }
 

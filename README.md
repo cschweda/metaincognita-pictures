@@ -9,7 +9,7 @@ Mantel is part of the [metaincognita](https://metaincognita.com) suite of simula
 ## What it does
 
 - **Pairs like a Roku.** A frame shows a code, you enter it on your phone, and it never asks again. Frames need no keyboard and no password.
-- **Runs from your phone.** Change what each frame shows, its matte color, timing, and sleep hours, and the frame updates instantly.
+- **Runs from your phone.** Skip, go back, or pause any frame like a remote, and change what it shows, its matte color, timing, and sleep hours. Frames update instantly.
 - **Never crops.** Portrait, square, and panoramic photos all show in full, on a matte or a blurred backdrop, with optional captions.
 - **Organizes by tag.** Upload in batches, tag photos, drag them into order, and save presets like "Holidays".
 - **Keeps playing offline.** Each frame caches the library, so it keeps going without a network, even after a restart.

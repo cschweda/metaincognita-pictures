@@ -49,6 +49,7 @@ let wakeLock: WakeLockSentinel | null = null
 let serviceWorker: ServiceWorker | null = null
 let reloadTimer: ReturnType<typeof setTimeout> | undefined
 let failures = 0
+let paused = false
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
@@ -148,7 +149,7 @@ async function advance() {
   if (firstSlide) beat() // So the admin's thumbnail fills in right away.
   sendToWorker({ type: 'shown', url: src })
   warmNext()
-  schedule((config.value?.interval_sec ?? 30) * 1000)
+  if (!paused) schedule((config.value?.interval_sec ?? 30) * 1000)
 }
 
 async function loadConfig() {
@@ -199,6 +200,18 @@ function listen() {
     }).catch(() => undefined)
   })
   events.addEventListener('reload', () => location.reload())
+  events.addEventListener('control', ({ data }) => {
+    if (data === 'next') step(1)
+    else if (data === 'previous') step(-1)
+    else if (data === 'pause') {
+      paused = true
+      clearTimeout(timer)
+    }
+    else if (data === 'resume') {
+      paused = false
+      schedule(0)
+    }
+  })
   // A closed stream can mean the frame was removed, and the heartbeat handles that.
   events.onerror = () => {
     if (events?.readyState === EventSource.CLOSED) beat()

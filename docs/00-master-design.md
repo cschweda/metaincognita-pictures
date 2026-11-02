@@ -227,7 +227,7 @@ Deleting a photo removes its `/v/` files along with its row.
 - `GET/POST/PATCH/DELETE /api/tags`
 - `POST /api/photos/tags` `{ photo_ids, add: [tag_id], remove: [tag_id] }` (bulk)
 - `GET/POST/PATCH/DELETE /api/presets`
-- `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
+- `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/control` `{ action }` (next, previous, pause, resume), `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
 - `GET /api/pair/lookup?code=` → screen size, IP, and age of a pending pairing, for the approval screen
 - `POST /api/pair/approve` `{ code, name }`
 - `GET /api/stats` (library totals), `GET /api/stats/server` (CPU, memory, disk, and photos remaining)

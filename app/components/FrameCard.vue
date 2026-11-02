@@ -77,6 +77,16 @@ async function deletePreset(id: string) {
   emit('presetsChanged')
 }
 
+async function control(action: string) {
+  error.value = ''
+  try {
+    await $fetch(`/api/devices/${props.frame.id}/control`, { method: 'POST', headers: apiHeaders, body: { action } })
+  }
+  catch {
+    error.value = 'That frame is offline, so it can\'t be controlled right now.'
+  }
+}
+
 async function reload() {
   await $fetch(`/api/devices/${props.frame.id}/reload`, { method: 'POST', headers: apiHeaders })
   status.value = 'Reload sent.'
@@ -115,6 +125,13 @@ const sleepValue = (value: string) => value || null
         <p class="text-muted">{{ lastSeen }}</p>
         <p v-if="frame.dormant" class="text-warning">Silent for 30+ days. Consider removing it.</p>
       </div>
+    </div>
+
+    <div v-if="frame.online" class="grid grid-cols-4 gap-2" role="group" aria-label="Remote control">
+      <UButton variant="soft" color="neutral" icon="i-lucide-skip-back" aria-label="Previous photo" class="justify-center" @click="control('previous')" />
+      <UButton variant="soft" color="neutral" icon="i-lucide-pause" aria-label="Pause" class="justify-center" @click="control('pause')" />
+      <UButton variant="soft" color="neutral" icon="i-lucide-play" aria-label="Resume" class="justify-center" @click="control('resume')" />
+      <UButton variant="soft" color="neutral" icon="i-lucide-skip-forward" aria-label="Next photo" class="justify-center" @click="control('next')" />
     </div>
 
     <div class="flex flex-col gap-2">
