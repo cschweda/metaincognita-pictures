@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on 
 ### Added
 
 - Docker Compose self-hosting with automatic HTTPS, nightly backups, and a prebuilt image.
-- Self-hosting guide, and the Mantel name, README, and social image.
+- Self-hosting guide, and the Mantel name, README, social image, and openmantel.com.
 - Tags tab for renaming and deleting tags, and search by file name or caption in the photo grid.
 - Frame setup scripts for Mac, Ubuntu, Windows, and Raspberry Pi.
 - `pnpm photos:rebuild` to recreate frame images from originals.
