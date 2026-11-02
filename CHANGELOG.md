@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Home, login, and protected admin pages.
 - Admin login, logout, and session check, with rate limiting.
 - Default-deny auth middleware for admin sessions and device tokens.
 - SQLite database with a migration runner and the initial schema.
