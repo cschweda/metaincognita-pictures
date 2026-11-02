@@ -65,11 +65,8 @@ async function approve() {
 </script>
 
 <template>
-  <main class="mx-auto max-w-sm p-4 flex flex-col gap-4">
-    <header class="flex items-center justify-between">
-      <h1 class="text-lg font-medium">Pair a frame</h1>
-      <UButton to="/admin" variant="ghost" color="neutral">Back</UButton>
-    </header>
+  <AdminShell title="Pair a frame">
+    <div class="max-w-md flex flex-col gap-4">
 
     <form class="flex flex-col gap-3" @submit.prevent="lookup">
       <UFormField label="Code on the frame">
@@ -80,17 +77,17 @@ async function approve() {
           autocomplete="off"
           autocapitalize="characters"
           placeholder="ABC-234"
-          class="w-full font-mono"
+          class="w-full font-mono text-2xl"
         />
       </UFormField>
       <UButton type="submit" block variant="soft">Find frame</UButton>
     </form>
 
-    <p v-if="error" role="alert" class="text-sm text-error">{{ error }}</p>
-    <p v-if="done" role="status" class="text-sm">{{ done }}</p>
+    <p v-if="error" role="alert" class="text-error">{{ error }}</p>
+    <p v-if="done" role="status">{{ done }}</p>
 
     <form v-if="pending" class="flex flex-col gap-3" @submit.prevent="approve">
-      <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+      <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         <dt class="text-muted">Screen</dt>
         <dd>{{ screenSize }}</dd>
         <dt class="text-muted">IP address</dt>
@@ -98,11 +95,12 @@ async function approve() {
         <dt class="text-muted">Requested</dt>
         <dd>{{ age }}</dd>
       </dl>
-      <p class="text-sm text-muted">If you didn't start this, don't approve it.</p>
+      <p class="text-muted">If you didn't start this, don't approve it.</p>
       <UFormField label="Frame name">
         <UInput v-model="name" name="name" required maxlength="60" placeholder="Kitchen" class="w-full" />
       </UFormField>
       <UButton type="submit" block>Approve</UButton>
     </form>
-  </main>
+    </div>
+  </AdminShell>
 </template>

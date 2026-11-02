@@ -97,7 +97,7 @@ add_header Referrer-Policy no-referrer;
 ```
 TLS via Let's Encrypt, auto-renewed. HTTP → HTTPS redirect.
 
-The CSP is set by the app, not nginx. Nuxt's server-rendered pages include inline scripts (runtime config, color mode, importmap), so a static `script-src 'self'` stops the page hydrating, and this only shows up in production. `nuxt-security` issues a per-request nonce instead:
+The CSP is set by the app, not nginx. Subresource integrity is off: every script is self-hosted, so it adds no protection, and a stale hash blocks the whole page. Nuxt's server-rendered pages include inline scripts (runtime config, color mode, importmap), so a static `script-src 'self'` stops the page hydrating, and this only shows up in production. `nuxt-security` issues a per-request nonce instead:
 
 ```
 default-src 'self'; base-uri 'none'; object-src 'none'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; script-src 'self' 'nonce-…'

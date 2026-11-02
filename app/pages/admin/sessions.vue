@@ -25,13 +25,9 @@ async function revoke(session: LoginSession) {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl p-4 flex flex-col gap-4">
-    <header class="flex items-center justify-between">
-      <h1 class="text-lg font-medium">Login sessions</h1>
-      <UButton to="/admin" variant="ghost" color="neutral">Back</UButton>
-    </header>
+  <AdminShell title="Login sessions">
     <ul class="flex flex-col gap-3">
-      <li v-for="session in sessions" :key="session.ref" class="flex items-start justify-between gap-3 text-sm">
+      <li v-for="session in sessions" :key="session.ref" class="flex items-start justify-between gap-3 max-w-3xl">
         <div class="min-w-0">
           <p class="truncate">{{ session.user_agent ?? 'Unknown browser' }}</p>
           <p class="text-muted">
@@ -39,8 +35,8 @@ async function revoke(session: LoginSession) {
             <span v-if="session.current">(this session)</span>
           </p>
         </div>
-        <UButton size="xs" variant="soft" color="error" @click="revoke(session)">Sign out</UButton>
+        <UButton size="sm" variant="soft" color="error" @click="revoke(session)">Sign out</UButton>
       </li>
     </ul>
-  </main>
+  </AdminShell>
 </template>

@@ -27,7 +27,7 @@ async function login() {
 <template>
   <main class="min-h-dvh flex items-center justify-center p-4">
     <form class="w-full max-w-xs flex flex-col gap-3" @submit.prevent="login">
-      <h1 class="text-lg font-medium">pictures</h1>
+      <h1 class="text-5xl font-extrabold tracking-tight">pictures</h1>
       <UFormField label="Password" :error="error || undefined">
         <UInput
           v-model="password"

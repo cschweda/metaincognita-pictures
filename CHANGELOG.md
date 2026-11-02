@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Dark admin redesign with large type, library numbers, and a bar chart of photos by tag.
+- Start slideshow button that plays full screen in any logged-in browser, with no pairing.
+- Tag dropdown shared by the slideshow and grid. No tag plays every photo in random order.
+- Tag picker at upload, bulk tagging, hiding, and deleting in the photo grid.
+- Per-frame tag filters, presets, matte, blurred backdrop, interval, order, and sleep window, all changeable from a phone.
+- Instant frame updates over Server-Sent Events.
+- Frame cards with the photo showing now, online status, rename, reload, and remove.
 - Roku-style pairing: frames show a code, and the admin approves it after checking the screen size and IP address.
 - Slideshow at `/` with cross-fades, the matte color, whole-photo display, and optional captions.
 - Device config and playlist routes, with `manual`, `random`, `taken_at`, and `uploaded_at` order.
@@ -33,6 +40,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Subresource integrity is off, because it blocked the page and adds nothing for self-hosted files.
 - File types are read by `sharp` from the file's bytes, in place of the `file-type` package.
 - Icons are bundled into the client, so the browser never calls the Iconify API.
 - Frames and the admin grid load images from `/v/<id>-<variant>.webp`, so the service worker can cache them. `/api/img` is removed from the design and from device routes.

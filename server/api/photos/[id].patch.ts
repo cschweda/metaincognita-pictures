@@ -28,5 +28,6 @@ export default defineEventHandler(async (event) => {
   })()
 
   if (!photo) throw createError({ statusCode: 404, statusMessage: 'Photo not found' })
+  pushToAllFrames('playlist-changed')
   return { photo }
 })

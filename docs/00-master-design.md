@@ -179,12 +179,14 @@ Photos carry zero or more tags; a photo can be both `travel` and `fall`. Tags ar
 A frame shows a **filter**, not a fixed album:
 
 ```json
-{ "tags": ["travel", "fall"], "mode": "any" }
+{ "tags": ["<travel id>", "<fall id>"], "mode": "any" }
 ```
 
 - `mode: "any"` — photos with travel OR fall
 - `mode: "all"` — photos with travel AND fall
 - `tags: []` — everything
+
+Filters store tag ids, so renaming a tag is safe. Deleting a tag removes it from every filter and preset.
 
 The playlist endpoint turns the filter into one query (`EXISTS` for `any`, a `HAVING COUNT(DISTINCT tag_id) = n` for `all`) and applies the device's `sort`. The frame never knows about tags; it just receives ids.
 
@@ -234,7 +236,7 @@ Deleting a photo removes its `/v/` files along with its row.
 
 ## 7a. Admin on the phone
 
-The admin home (`/admin`) is built for a phone first. It is a list of frames; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
+The admin home (`/admin`) is built for a phone first. It leads with Start slideshow and the library's numbers, then lists the frames; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
 
 Each photo in the admin grid has a cached thumbnail, a **Show on frames** checkbox (on by default), a caption field, and a corner handle for dragging it to a new place. The handle also works with the arrow keys. A frame set to `manual` sort follows this order.
 
@@ -252,6 +254,12 @@ Upload also works from the phone (share sheet → browser → upload form with t
 - Offline resilience: if a fetch fails, keep cycling the local cache; show a small dim dot in a corner so you know it's offline.
 - Self-reloads every 6 hours (Chromium memory hygiene) and on SSE `reload`.
 - Requests a screen wake lock; harmless if refused.
+
+### Slideshow in an admin's browser
+
+**Start slideshow** at the top of the admin plays in that browser with no pairing, using the same page as a frame. The admin session may read `GET /api/frame/config` and `GET /api/frame/playlist`, and nothing else under `/api/frame/`.
+
+The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order.
 
 ### Frame-side caching (bandwidth)
 

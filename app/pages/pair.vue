@@ -44,7 +44,7 @@ onBeforeUnmount(() => clearTimeout(timer))
     <template v-if="code">
       <p class="text-[6vmin]">Pair this frame</p>
       <p class="font-mono font-semibold tracking-widest text-[14vmin] leading-none">{{ code }}</p>
-      <p class="text-[3vmin] text-white/70">Log in and go to Admin, then Pair a frame.</p>
+      <p class="text-[3vmin] text-white/70">Log in on your phone and choose Pair a frame.</p>
     </template>
     <p v-else class="text-[4vmin] text-white/70">Getting a code…</p>
   </main>

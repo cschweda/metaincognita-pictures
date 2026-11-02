@@ -1,8 +1,7 @@
-// Role: device. Visible photos for this frame, in order and paged.
-// Tag filters arrive in Phase 3; for now every frame shows the whole library.
+// Role: device, or admin for a slideshow in their own browser. Visible photos, in order and paged.
 import { createHash } from 'node:crypto'
 import { db } from '../../db'
-import type { Device, Photo } from '../../types'
+import type { Photo } from '../../types'
 
 type Entry = Pick<Photo, 'id' | 'caption'>
 
@@ -14,8 +13,9 @@ const ORDER: Record<string, string> = {
 }
 
 // Seeded by the device, so paging stays stable and frames don't all show the same order.
-function shuffled(entries: Entry[], device: Device): Entry[] {
-  let state = createHash('sha256').update(device.id).digest().readUInt32LE(0)
+// An admin's slideshow sends a new seed for each start.
+function shuffled(entries: Entry[], seed: string): Entry[] {
+  let state = createHash('sha256').update(seed).digest().readUInt32LE(0)
   const next = () => {
     state = (state + 0x6D2B79F5) | 0
     let t = Math.imul(state ^ (state >>> 15), 1 | state)
@@ -32,13 +32,19 @@ function shuffled(entries: Entry[], device: Device): Entry[] {
 }
 
 export default defineEventHandler((event) => {
-  const device = event.context.device!
+  const device = event.context.device
   const query = getQuery(event)
   const limit = Math.min(Math.max(Number(query.limit) || 200, 1), 200)
-  const sort = device.sort in ORDER ? device.sort : 'random'
+  // In an admin's browser, a chosen tag plays in the arranged order, and no tag plays everything at random.
+  const tag = !device && typeof query.tag === 'string' && query.tag ? query.tag : null
+  const sort = !device ? (tag ? 'manual' : 'random') : device.sort in ORDER ? device.sort : 'random'
 
-  const rows = db.prepare<[], Entry>(`SELECT id, caption FROM photos WHERE hidden = 0 ORDER BY ${ORDER[sort]}`).all()
-  const entries = sort === 'random' ? shuffled(rows, device) : rows
+  const clause = filterClause(device ? parseFilter(device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+
+  const rows = db.prepare<string[], Entry>(
+    `SELECT id, caption FROM photos WHERE hidden = 0 AND ${clause.sql} ORDER BY ${ORDER[sort]}`,
+  ).all(...clause.params)
+  const entries = sort === 'random' ? shuffled(rows, device?.id ?? String(query.seed ?? 'admin')) : rows
 
   const after = typeof query.after === 'string' ? entries.findIndex(entry => entry.id === query.after) : -1
   const photos = entries.slice(after + 1, after + 1 + limit)

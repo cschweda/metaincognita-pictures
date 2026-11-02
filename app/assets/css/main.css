@@ -1,2 +1,51 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "@fontsource-variable/bricolage-grotesque/index.css";
+
+@theme static {
+  --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Gilded frame gold, the color of the main action. */
+  --color-gold-50: #fef8e8;
+  --color-gold-100: #fdefc5;
+  --color-gold-200: #fbdf8e;
+  --color-gold-300: #f7ca58;
+  --color-gold-400: #f2b134;
+  --color-gold-500: #d9962a;
+  --color-gold-600: #b57520;
+  --color-gold-700: #8f5a1e;
+  --color-gold-800: #74491f;
+  --color-gold-900: #623e1f;
+  --color-gold-950: #38200d;
+}
+
+/* The gallery wall. */
+html.dark {
+  color-scheme: dark;
+  --ui-bg: #10181c;
+  --ui-bg-muted: #141e23;
+  --ui-bg-elevated: #18242a;
+  --ui-bg-accented: #223138;
+  --ui-bg-inverted: #f2efe6;
+  --ui-text: #f2efe6;
+  --ui-text-highlighted: #fbf9f3;
+  --ui-text-toned: #cdd6d7;
+  --ui-text-muted: #9fb0b5;
+  --ui-text-dimmed: #7f9196;
+  --ui-text-inverted: #10181c;
+  --ui-border: #2c3c44;
+  --ui-border-muted: #223138;
+  --ui-border-accented: #3b4f58;
+  --ui-border-inverted: #f2efe6;
+  --ui-radius: 0.5rem;
+}
+
+/* Big type everywhere in the admin. Frames size their own text, so they aren't affected. */
+html {
+  font-size: 112.5%;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ui-primary);
+  outline-offset: 2px;
+}

@@ -78,6 +78,15 @@ function readTakenAt(exif: Buffer | undefined): string | null {
   }
 }
 
+/** Returns a usable tag name, or throws a 400. Commas separate tags at upload. */
+export function cleanTagName(value: unknown): string {
+  const name = typeof value === 'string' ? value.trim() : ''
+  if (!name || name.length > 40 || name.includes(',')) {
+    throw createError({ statusCode: 400, statusMessage: 'Tag names are 1 to 40 characters, with no commas' })
+  }
+  return name
+}
+
 function tagIds(names: string[]): string[] {
   const insert = db.prepare(`INSERT OR IGNORE INTO tags (id, name) VALUES (?, ?)`)
   const find = db.prepare<[string], { id: string }>(`SELECT id FROM tags WHERE name = ?`)
@@ -168,6 +177,7 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
         return row
       })()
 
+      pushToAllFrames('playlist-changed')
       return { status: 'added', photo }
     }
     catch (error) {
@@ -197,6 +207,7 @@ export async function deletePhoto(id: string): Promise<boolean> {
     rm(picturesPath('orig', `${id}.${extension}`), { force: true }),
   ))
   await removeFiles(id, picturesPath('orig', id))
+  pushToAllFrames('playlist-changed')
   return true
 }
 

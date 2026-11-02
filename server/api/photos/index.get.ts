@@ -8,9 +8,25 @@ export default defineEventHandler((event) => {
   const before = query.before === undefined ? Number.MAX_VALUE : Number(query.before)
   if (Number.isNaN(before)) throw createError({ statusCode: 400, statusMessage: 'Invalid before' })
 
-  const photos = db.prepare<[number, number], Photo>(
-    `SELECT * FROM photos WHERE position < ? ORDER BY position DESC LIMIT ?`,
-  ).all(before, limit)
+  const tag = typeof query.tag === 'string' ? query.tag : null
+  const clause = filterClause({ tags: tag ? [tag] : [], mode: 'any' })
 
-  return { photos, next: photos.length === limit ? photos.at(-1)?.position ?? null : null }
+  const photos = db.prepare<unknown[], Photo>(
+    `SELECT * FROM photos WHERE position < ? AND ${clause.sql} ORDER BY position DESC LIMIT ?`,
+  ).all(before, ...clause.params, limit)
+
+  const tagRows = photos.length === 0
+    ? []
+    : db.prepare<string[], { photo_id: string, id: string, name: string }>(
+        `SELECT pt.photo_id, t.id, t.name FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id
+         WHERE pt.photo_id IN (${photos.map(() => '?').join(', ')}) ORDER BY t.name COLLATE NOCASE`,
+      ).all(...photos.map(photo => photo.id))
+
+  return {
+    photos: photos.map(photo => ({
+      ...photo,
+      tags: tagRows.filter(row => row.photo_id === photo.id).map(({ id, name }) => ({ id, name })),
+    })),
+    next: photos.length === limit ? photos.at(-1)?.position ?? null : null,
+  }
 })

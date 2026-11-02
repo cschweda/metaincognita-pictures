@@ -18,6 +18,12 @@ export interface Tag {
   name: string
 }
 
+export interface Preset {
+  id: string
+  name: string
+  filter: string
+}
+
 export interface Device {
   id: string
   name: string
@@ -38,6 +44,7 @@ export interface Device {
   last_seen_at: string | null
   token_rotated_at: string | null
   revoked: number
+  current_photo_id: string | null
 }
 
 export interface Pairing {

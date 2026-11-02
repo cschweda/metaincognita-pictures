@@ -15,6 +15,8 @@ const PUBLIC_ROUTES = new Set([
 ])
 const PUBLIC_ICON_PREFIX = 'GET /api/_nuxt_icon/'
 const DEVICE_PREFIXES = ['/api/frame/']
+// A logged-in admin can run the slideshow in their own browser, with no pairing.
+const ADMIN_SLIDESHOW_ROUTES = new Set(['GET /api/frame/config', 'GET /api/frame/playlist'])
 
 // Public routes that use a browser session, so they need the CSRF header too.
 const CSRF_PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'POST /api/auth/logout'])
@@ -66,7 +68,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (DEVICE_PREFIXES.some(prefix => path.startsWith(prefix))) {
-    if (!event.context.device) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    const allowed = event.context.device || (event.context.admin && ADMIN_SLIDESHOW_ROUTES.has(route))
+    if (!allowed) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     return
   }
 

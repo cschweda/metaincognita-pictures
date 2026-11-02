@@ -50,5 +50,6 @@ export default defineEventHandler(async (event) => {
     const position = targetPosition(id, after)
     return db.prepare<[number, string], Photo>(`UPDATE photos SET position = ? WHERE id = ? RETURNING *`).get(position, id)
   })()
+  pushToAllFrames('playlist-changed')
   return { photo }
 })
