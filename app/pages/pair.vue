@@ -35,7 +35,17 @@ async function poll() {
   timer = setTimeout(poll, POLL_MS)
 }
 
-onMounted(start)
+// A removed frame shouldn't keep its photos, and a re-paired one starts clean.
+async function clearFrameCache() {
+  if (!('caches' in window)) return
+  const names = await caches.keys()
+  await Promise.all(names.map(name => caches.delete(name)))
+}
+
+onMounted(() => {
+  clearFrameCache().catch(() => undefined)
+  start()
+})
 onBeforeUnmount(() => clearTimeout(timer))
 </script>
 

@@ -24,6 +24,9 @@ const PAGE_LOW_WATER = 20
 const RETRY_MS = 30_000
 const HEARTBEAT_MS = 60_000
 const PLAYLIST_DEBOUNCE_MS = 1500
+const SKIP_MS = 250
+const PREFETCH_COUNT = 20
+const RELOAD_MS = 6 * 60 * 60 * 1000 // Chromium memory hygiene.
 
 const config = ref<Config | null>(null)
 const slides = reactive<[Slide, Slide]>([
@@ -33,6 +36,7 @@ const slides = reactive<[Slide, Slide]>([
 const active = ref(0)
 const empty = ref(false)
 const sleeping = ref(false)
+const offline = ref(false)
 
 let entries: Entry[] = []
 let cursor = 0
@@ -42,6 +46,9 @@ let playlistTimer: ReturnType<typeof setTimeout> | undefined
 let heartbeat: ReturnType<typeof setInterval> | undefined
 let events: EventSource | undefined
 let wakeLock: WakeLockSentinel | null = null
+let serviceWorker: ServiceWorker | null = null
+let reloadTimer: ReturnType<typeof setTimeout> | undefined
+let failures = 0
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
@@ -75,6 +82,8 @@ async function reloadPlaylist() {
   nextPage = page.next
   cursor = 0
   empty.value = entries.length === 0
+  if (entries.length) sendToWorker({ type: 'listed', urls: entries.map(entry => new URL(url(entry.id)!, location.origin).pathname) })
+  warmNext()
 }
 
 async function loadMore() {
@@ -98,31 +107,54 @@ function schedule(ms: number) {
   timer = setTimeout(advance, ms)
 }
 
-async function advance() {
-  try {
-    sleeping.value = inSleepWindow()
-    if (sleeping.value) return schedule(RETRY_MS)
+function sendToWorker(message: object) {
+  serviceWorker?.postMessage(message)
+}
 
-    if (cursor >= entries.length) {
+/** Keeps the next photos ready, so the first pass never shows a loading gap. */
+function warmNext() {
+  const upcoming = entries.slice(cursor, cursor + PREFETCH_COUNT).map(entry => url(entry.id))
+  if (upcoming.length) sendToWorker({ type: 'prefetch', urls: upcoming })
+}
+
+async function advance() {
+  sleeping.value = inSleepWindow()
+  if (sleeping.value) return schedule(RETRY_MS)
+
+  if (cursor >= entries.length) {
+    try {
       await reloadPlaylist()
       if (empty.value) return schedule(RETRY_MS)
     }
+    catch (error) {
+      if (goToPairing(error)) return
+      offline.value = true
+      cursor = 0 // Keep cycling what is already here.
+      if (entries.length === 0) return schedule(RETRY_MS)
+    }
+  }
 
-    const entry = entries[cursor++]!
-    if (entries.length - cursor < PAGE_LOW_WATER) await loadMore()
+  const entry = entries[cursor++]!
+  if (entries.length - cursor < PAGE_LOW_WATER) await loadMore().catch(() => undefined)
 
-    const src = url(entry.id)
-    const backdrop = config.value?.backdrop === 'blur' ? url(entry.id, 640) : ''
+  const src = url(entry.id)
+  const backdrop = config.value?.backdrop === 'blur' ? url(entry.id, 640) : ''
+  try {
     await Promise.all([preload(src), backdrop ? preload(backdrop) : undefined])
-
-    const hidden = 1 - active.value
-    slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
-    active.value = hidden
-    schedule((config.value?.interval_sec ?? 30) * 1000)
   }
   catch {
-    await start()
+    // Not cached and no network, or deleted. Move on quickly, and pause if nothing loads.
+    failures++
+    return schedule(failures < entries.length ? SKIP_MS : RETRY_MS)
   }
+
+  failures = 0
+  const hidden = 1 - active.value
+  slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
+  active.value = hidden
+  sendToWorker({ type: 'shown', url: src })
+  warmNext()
+  schedule((config.value?.interval_sec ?? 30) * 1000)
 }
 
 async function loadConfig() {
@@ -149,9 +181,10 @@ async function beat() {
   if (config.value?.preview) return
   try {
     await $fetch('/api/frame/heartbeat', { method: 'POST', body: { photo_id: slides[active.value].id || null } })
+    offline.value = false
   }
   catch (error) {
-    goToPairing(error)
+    if (!goToPairing(error)) offline.value = true
   }
 }
 
@@ -188,11 +221,27 @@ function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape') exitPreview()
 }
 
+async function startCache() {
+  if (!('serviceWorker' in navigator)) return
+  await navigator.serviceWorker.register('/sw.js')
+  serviceWorker = (await navigator.serviceWorker.ready).active
+  await navigator.storage?.persist?.()
+  warmNext()
+}
+
 onMounted(async () => {
   await start()
-  if (config.value?.preview) window.addEventListener('keydown', onKey)
-  else listen()
+  if (config.value?.preview) {
+    window.addEventListener('keydown', onKey)
+    return
+  }
+  listen()
+  startCache().catch(() => undefined)
+  beat()
   heartbeat = setInterval(beat, HEARTBEAT_MS)
+  reloadTimer = setTimeout(() => location.reload(), RELOAD_MS)
+  window.addEventListener('offline', beat)
+  window.addEventListener('online', beat)
   try {
     wakeLock = await navigator.wakeLock?.request('screen')
   }
@@ -204,7 +253,10 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   clearTimeout(timer)
   clearTimeout(playlistTimer)
+  clearTimeout(reloadTimer)
   clearInterval(heartbeat)
+  window.removeEventListener('offline', beat)
+  window.removeEventListener('online', beat)
   events?.close()
   window.removeEventListener('keydown', onKey)
   wakeLock?.release()
@@ -221,6 +273,7 @@ onBeforeUnmount(() => {
       </div>
     </template>
     <p v-if="empty" class="caption" :style="{ color: captionColor }">No photos to show</p>
+    <span v-if="offline && !sleeping" class="offline" role="status" aria-label="Offline" />
     <div v-if="sleeping" class="sleep" />
     <p v-if="config?.preview" class="hint">Click or press Esc to exit</p>
   </main>
@@ -266,6 +319,15 @@ onBeforeUnmount(() => {
   text-align: center;
   font-size: clamp(13px, 1.5vmin, 22px);
   text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+}
+.offline {
+  position: absolute;
+  right: 1vmin;
+  bottom: 1vmin;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.3);
 }
 .hint {
   position: absolute;

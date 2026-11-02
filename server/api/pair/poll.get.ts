@@ -3,8 +3,6 @@ import { ulid } from 'ulid'
 import { db } from '../../db'
 import type { Pairing } from '../../types'
 
-const COOKIE_MAX_AGE = 400 * 24 * 60 * 60 // The longest a browser keeps a cookie.
-
 export default defineEventHandler((event) => {
   const id = String(getQuery(event).id ?? '')
   const token = randomToken()
@@ -36,13 +34,7 @@ export default defineEventHandler((event) => {
     return { status: 'expired' }
   }
   if (outcome === 'approved') {
-    setCookie(event, 'device_token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: COOKIE_MAX_AGE,
-    })
+    setDeviceCookie(event, token)
     console.log(`[pair] claimed ip=${clientIp(event)}`)
   }
   return { status: outcome }

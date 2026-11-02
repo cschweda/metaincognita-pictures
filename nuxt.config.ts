@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     output: { dir: process.env.BUILD_OUTPUT_DIR || '.output' }, // rebuild.sh builds to .output.new
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations' }],
   },
+  routeRules: { '/sw.js': { headers: { 'Cache-Control': 'no-cache' } } },
   runtimeConfig: { adminPasswordHash: '', dbPath: '', picturesDir: '' },
   security: {
     nonce: true,

@@ -267,6 +267,8 @@ Goal: each frame downloads each photo once. After the first pass through its pla
 
 - **HTTP layer.** Variant URLs are immutable (`/v/<id>-<size>.webp`); nginx sends `Cache-Control: private, max-age=31536000, immutable`. Chromium's own cache then skips re-downloads for free, but it evicts under disk pressure, so it is a bonus, not the mechanism.
 - **Service worker + Cache API.** The SW intercepts `/v/*` requests: cache-first, and on a miss fetch from the network and store only a successful response, so a `401` is never cached. Nothing is evicted by age; the cache is the frame's local copy of its library. A 10k-photo library at the 1920 size is ~4 GB, which fits on a 32 GB card or any mini-PC SSD. The SW also caches the current playlist page so a cold start offline still has something to show.
+- **App shell.** The SW also keeps `/`, its `/_nuxt/` files, and the latest config and playlist, so a frame can restart with no network.
+- **Removal.** The pairing page clears all caches, so a removed frame loses its photos once it next reaches the server.
 - **Prefetch.** The page tells the SW to warm the next 20 ids in the playlist, so the first pass never shows a loading gap and the frame is idle most of the time.
 - **Budget.** The SW checks `navigator.storage.estimate()`; when usage passes 80% of quota it evicts least-recently-displayed entries. Call `navigator.storage.persist()` once so Chromium doesn't clear the cache on its own.
 - **Invalidation.** Photo ids never change, so there is nothing to invalidate. A deleted photo simply stops appearing in playlists; the SW drops entries not seen in any playlist for 30 days.

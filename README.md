@@ -7,7 +7,7 @@ A self-hosted, cloud-based digital picture frame for one user. A single Nuxt app
 
 All logic lives on the server. The frame is a kiosk that shows what it's told, and it keeps running from its local cache if the network drops.
 
-**Status:** Phase 3. Start a slideshow from the admin, or pair frames and control each one from your phone, with tag filters, presets, and instant updates.
+**Status:** Phase 4. Frames keep a local copy of the library and keep playing offline. Start a slideshow from the admin, or pair frames and control each one from your phone, with tag filters, presets, and instant updates.
 
 ## Stack
 

@@ -1,6 +1,19 @@
+import type { H3Event } from 'h3'
 import type { Device } from '../types'
 
 const DORMANT_MS = 30 * 24 * 60 * 60 * 1000
+const COOKIE_MAX_AGE = 400 * 24 * 60 * 60 // The longest a browser keeps a cookie.
+
+/** HTTP-only, so frame JavaScript never sees the token. */
+export function setDeviceCookie(event: H3Event, token: string): void {
+  setCookie(event, 'device_token', token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: COOKIE_MAX_AGE,
+  })
+}
 
 /** What the admin sees. Token hashes never leave the server. */
 export function publicDevice(device: Device) {

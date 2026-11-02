@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Service worker library cache and prefetching, so each frame downloads each photo once and keeps playing offline, even after a restart.
+- Small offline dot on frames, and a page reload every 6 hours.
+- Silent device token rotation every 30 days, with a 24-hour grace window.
 - Dark admin redesign with large type, library numbers, and a bar chart of photos by tag.
 - Start slideshow button that plays full screen in any logged-in browser, with no pairing.
 - Tag dropdown shared by the slideshow and grid. No tag plays every photo in random order.
