@@ -52,14 +52,6 @@ let failures = 0
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
-// A dark matte gets light text, and a light matte gets dark text.
-const captionColor = computed(() => {
-  const hex = /^#([0-9a-f]{6})$/i.exec(config.value?.matte ?? '')?.[1]
-  if (!hex || config.value?.backdrop === 'blur') return 'rgb(255 255 255 / 0.75)'
-  const [r, g, b] = [0, 2, 4].map(start => Number.parseInt(hex.slice(start, start + 2), 16))
-  return 0.299 * r! + 0.587 * g! + 0.114 * b! > 150 ? 'rgb(0 0 0 / 0.65)' : 'rgb(255 255 255 / 0.7)'
-})
-
 /** Times are the frame's local time, and a window may cross midnight. */
 function inSleepWindow() {
   const { sleep_start: start, sleep_end: end } = config.value ?? {}
@@ -288,10 +280,10 @@ onBeforeUnmount(() => {
       <div class="slide" :class="{ visible: active === index && slide.src }">
         <img v-if="slide.backdrop" :src="slide.backdrop" alt="" class="backdrop">
         <img v-if="slide.src" :src="slide.src" alt="" class="photo">
-        <p v-if="slide.caption" class="caption" :style="{ color: captionColor }">{{ slide.caption }}</p>
+        <p v-if="slide.caption" class="caption">{{ slide.caption }}</p>
       </div>
     </template>
-    <p v-if="empty" class="caption" :style="{ color: captionColor }">No photos to show</p>
+    <p v-if="empty" class="caption">No photos to show</p>
     <span v-if="offline && !sleeping" class="offline" role="status" aria-label="Offline" />
     <div v-if="sleeping" class="sleep" />
     <p v-if="config?.preview" class="hint">Left and right arrows change photos. Esc returns to the admin.</p>
@@ -330,14 +322,16 @@ onBeforeUnmount(() => {
   filter: blur(40px) brightness(0.7);
   transform: scale(1.15);
 }
+/* An edge-to-edge band keeps white text readable on any photo or matte. */
 .caption {
   position: absolute;
   inset-inline: 0;
-  bottom: 0.8vh;
-  padding-inline: 2vw;
+  bottom: 0;
+  padding: 0.6vmin 2vw;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
   text-align: center;
-  font-size: clamp(13px, 1.5vmin, 22px);
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  font-size: clamp(14px, 1.8vmin, 24px);
 }
 .offline {
   position: absolute;

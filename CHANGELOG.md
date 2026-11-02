@@ -45,6 +45,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Captions sit on a semi-transparent, edge-to-edge band, so they read on the lightest photos.
 - The admin opens on the photo library. Frames and library numbers moved to a Frames tab.
 - Session ids are stored as hashes, so database backups can't be used to log in. Everyone logs in again once.
 - Subresource integrity is off, because it blocked the page and adds nothing for self-hosted files.
