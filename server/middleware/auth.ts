@@ -44,11 +44,11 @@ export default defineEventHandler(async (event) => {
   event.context.admin = readSession(event)
   event.context.device = readDevice(event)
 
-  const path = event.path.split('?')[0] ?? ''
-  if (!path.toLowerCase().startsWith('/api/') && path.toLowerCase() !== '/api') return
+  // Leading slashes collapse so that //api/... can't skip the checks below.
+  const path = (event.path.split('?')[0] ?? '').replace(/^\/+/, '/')
+  if (!/^\/api(\/|$)/i.test(path)) return
 
-  const method = event.method === 'HEAD' ? 'GET' : event.method
-  const route = `${method} ${path}`
+  const route = `${event.method} ${path}`
 
   if (PUBLIC_ROUTES.has(route) || route.startsWith(PUBLIC_ICON_PREFIX)) {
     if (CSRF_PUBLIC_ROUTES.has(route)) requireCsrfHeader(event)
