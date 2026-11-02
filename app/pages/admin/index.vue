@@ -117,6 +117,10 @@ onMounted(() => {
   Sortable.create(grid.value, {
     handle: '[data-drag-handle]',
     animation: 150,
+    // Native drag and drop and pointer events are unreliable on iPhones, so use touch events.
+    forceFallback: true,
+    supportPointer: false,
+    fallbackTolerance: 3,
     onEnd({ item, from, oldIndex, newIndex }) {
       if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
       // Sortable moved the element itself. Put it back so Vue stays in charge of the list.
@@ -379,7 +383,7 @@ async function remove(photo: Photo) {
             data-drag-handle
             :aria-label="`Move ${photo.filename}. Use the arrow keys.`"
             title="Drag to rearrange"
-            class="absolute top-2 right-2 size-11 grid place-items-center rounded bg-black/70 text-white cursor-grab active:cursor-grabbing touch-none"
+            class="absolute top-2 right-2 size-11 grid place-items-center rounded bg-black/70 text-white cursor-grab active:cursor-grabbing touch-none select-none [-webkit-touch-callout:none]"
             @keydown.left.prevent="moveWithKeyboard($event, index)"
             @keydown.up.prevent="moveWithKeyboard($event, index)"
             @keydown.right.prevent="moveWithKeyboard($event, index)"
@@ -418,6 +422,10 @@ async function remove(photo: Photo) {
         <p v-if="photo.tags.length" class="text-sm text-muted truncate">
           {{ photo.tags.map(tag => tag.name).join(', ') }}
         </p>
+        <div class="hidden pointer-coarse:flex gap-1" role="group" :aria-label="`Move ${photo.filename}`">
+          <UButton size="sm" variant="soft" color="neutral" class="grow justify-center" :disabled="index === 0" @click="movePhoto(index, index - 1)">Earlier</UButton>
+          <UButton size="sm" variant="soft" color="neutral" class="grow justify-center" :disabled="index === photos.length - 1" @click="movePhoto(index, index + 1)">Later</UButton>
+        </div>
         <div class="flex flex-wrap gap-1">
           <UDropdownMenu v-if="onlineFrames.length" :items="frameMenu(photo)">
             <UButton size="sm" variant="ghost" color="neutral">Show on a frame</UButton>
