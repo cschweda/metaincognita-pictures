@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Photo upload with streaming to disk, duplicate detection, EXIF rotation, and four WebP sizes with metadata removed.
+- Admin grid with cached thumbnails, a Show on frames checkbox, optional captions, and delete.
+- Drag handle on each thumbnail to rearrange photos, which also works with the arrow keys.
+- `/v/` image route that requires an admin session or a valid device, and `/api/auth/image` for nginx.
+- `pnpm seed:ingest` to load the sample photos through the real upload route.
 - `pnpm seed:fetch` for 25 sample photos in five aspect ratios.
 - Phase 0 security checklist status in the README.
 - pm2 ecosystem file, password hash and test device scripts, and droplet setup steps.
@@ -21,6 +26,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- File types are read by `sharp` from the file's bytes, in place of the `file-type` package.
+- Icons are bundled into the client, so the browser never calls the Iconify API.
 - Frames and the admin grid load images from `/v/<id>-<variant>.webp`, so the service worker can cache them. `/api/img` is removed from the design and from device routes.
 - Image URLs now require an admin session or a valid device, using nginx `auth_request`. This is planned for Phase 1.
 - Photos start on the droplet's disk, with a DO Volume at `/var/pictures` once disk use passes 80%.

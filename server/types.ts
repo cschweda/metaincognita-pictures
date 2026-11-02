@@ -9,6 +9,8 @@ export interface Photo {
   uploaded_at: string
   hash: string
   hidden: number
+  position: number
+  caption: string | null
 }
 
 export interface Tag {

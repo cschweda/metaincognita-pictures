@@ -7,7 +7,7 @@ A self-hosted, cloud-based digital picture frame for one user. A single Nuxt app
 
 All logic lives on the server. The frame is a kiosk that shows what it's told, and it keeps running from its local cache if the network drops.
 
-**Status:** Phase 0. This is a deployable skeleton with login and no photo features yet.
+**Status:** Phase 1. You can upload, arrange, caption, and turn photos on or off. Pairing and the slideshow come next.
 
 ## Stack
 
@@ -35,6 +35,7 @@ pnpm dev              # http://localhost:3100
 | `pnpm hash-password` | Print an argon2id hash for `.env` |
 | `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
 | `pnpm seed:fetch` | Download the 25 sample photos into `seed/photos/` |
+| `pnpm seed:ingest` | Upload those photos through the real route; needs the app running and `PICTURES_PASSWORD` set |
 
 Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and Safari refuses those over plain `http://localhost`.
 
@@ -101,8 +102,9 @@ The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/
    ```nginx
    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
    add_header Referrer-Policy no-referrer;
+   client_max_body_size 60m;
    ```
-   Set `client_max_body_size` and add the `/v/` `auth_request` location when upload arrives in Phase 1. Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
+   Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
 
 ### Security checklist
 
@@ -119,7 +121,7 @@ From Doc 06 §12:
 | Argon2id hash in place; rate limiter tested | Done in Phase 0 |
 | Device cookie rejected on `/api/photos` | Done in Phase 0 |
 | No nginx path reaches `orig/` | Deferred to Phase 2 |
-| `/v/` URLs need a session or device cookie | Deferred to Phase 1 |
+| `/v/` URLs need a session or device cookie | Done in Phase 1 |
 | Session list and revoke button | Deferred to Phase 2 |
 | Pairing approval screen shows IP and screen size | Deferred to Phase 2 |
 | Token returned once; second poll logged | Deferred to Phase 2 |

@@ -74,14 +74,15 @@ Everything else is hygiene.
 ## 7. Image serving
 
 - Variant URLs (`/v/<ulid>-<size>.webp`) are unguessable but not secret, so a URL alone must not be enough to see a photo.
-- **Required:** nginx `location /v/` uses `auth_request` to call `GET /api/auth/image`, which returns 204 for an admin session or a valid device and 401 otherwise. The admin grid needs thumbnails too, so both roles pass. Build this in Phase 1, before any real photos are uploaded.
+- **Required:** `/v/` needs an admin session or a valid device, and the admin grid needs thumbnails too, so both roles pass. The auth middleware enforces this, and a Nitro route serves the files, so this holds with no nginx changes.
+- **Optional, for speed:** nginx can serve `/v/` itself with `auth_request` calling `GET /api/auth/image`, which returns 204 or 401. Never add a `/v/` location without `auth_request`.
 - **Originals are never served over HTTP.** An admin "download original" button, if wanted, streams through a Nitro handler that checks the admin session.
 - Nginx `location /v/` sets `Cache-Control: private, max-age=31536000, immutable`; no directory listing.
 
 ## 8. Upload
 
-- Admin session required. Max 50 MB per file, 20 files per request.
-- MIME sniffed from bytes (`file-type` package); `sharp` also throws on non-images.
+- Admin session required. Max 50 MB per file, 20 files per request. Uploads stream to disk. Nginx needs `client_max_body_size 60m`.
+- File type is read from the bytes by `sharp`, and only JPEG, PNG, WebP, TIFF, and AVIF are accepted. The filename and declared type are ignored.
 - Original filename is stored in the DB for display only and never used in a path. Files are named by ULID.
 - Variants are generated without `.withMetadata()`, so EXIF (including GPS) is stripped from everything frames ever see. Originals keep EXIF but never leave the droplet.
 - Processing is sequential (concurrency 1–2) to bound memory on a small droplet.

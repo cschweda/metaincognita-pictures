@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   devServer: { port: 3100, host: '127.0.0.1' },
   ui: { fonts: false },
-  icon: { provider: 'server', fallbackToApi: false, serverBundle: { collections: ['lucide'] } },
+  icon: { provider: 'server', fallbackToApi: false, serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },
   nitro: {
     output: { dir: process.env.BUILD_OUTPUT_DIR || '.output' }, // rebuild.sh builds to .output.new
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations' }],

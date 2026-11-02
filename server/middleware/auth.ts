@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/auth/login',
   'POST /api/auth/logout',
   'GET /api/auth/session',
+  'GET /api/auth/image',
   'GET /api/health',
   'POST /api/pair/start',
   'GET /api/pair/poll',
@@ -46,6 +47,15 @@ export default defineEventHandler(async (event) => {
 
   // Leading slashes collapse so that //api/... can't skip the checks below.
   const path = (event.path.split('?')[0] ?? '').replace(/^\/+/, '/')
+
+  // Images need a session or a device, so a copied URL alone shows nothing.
+  if (/^\/v(\/|$)/i.test(path)) {
+    if (!event.context.admin && !event.context.device) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    }
+    return
+  }
+
   if (!/^\/api(\/|$)/i.test(path)) return
 
   const route = `${event.method} ${path}`

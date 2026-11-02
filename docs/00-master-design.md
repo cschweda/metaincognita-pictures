@@ -114,7 +114,9 @@ CREATE TABLE photos (
   taken_at      TEXT,                      -- from EXIF if present
   uploaded_at   TEXT NOT NULL DEFAULT (datetime('now')),
   hash          TEXT NOT NULL UNIQUE,      -- sha256 of original, dedupe
-  hidden        INTEGER NOT NULL DEFAULT 0
+  hidden        INTEGER NOT NULL DEFAULT 0,   -- 1 = turned off, left out of playlists
+  position      REAL NOT NULL DEFAULT 0,      -- display order, highest first
+  caption       TEXT                          -- optional, up to 200 characters
 );
 
 CREATE TABLE tags (
@@ -143,7 +145,7 @@ CREATE TABLE devices (
   prev_token_hash       TEXT UNIQUE,         -- previous token, valid during rotation grace
   prev_token_expires_at TEXT,                -- 24 hours after rotation
   filter        TEXT NOT NULL DEFAULT '{"tags":[],"mode":"any"}',  -- JSON, see below
-  sort          TEXT NOT NULL DEFAULT 'random',   -- random | taken_at | uploaded_at
+  sort          TEXT NOT NULL DEFAULT 'random',   -- random | manual | taken_at | uploaded_at
   screen_w      INTEGER, screen_h INTEGER, dpr REAL,
   interval_sec  INTEGER NOT NULL DEFAULT 30,
   matte         TEXT NOT NULL DEFAULT '#000000',  -- CSS color behind the photo
@@ -213,14 +215,14 @@ Deleting a photo removes its `/v/` files along with its row.
 
 **Device (device cookie required)**
 - `GET  /api/frame/config` → interval, sleep window, matte, backdrop, `variant` (image size, see §6)
-- `GET  /api/frame/playlist?after=&limit=200` → ordered photo ids matching this device's filter, paged (server shuffles with a per-device seed if `random`, so paging stays stable)
+- `GET  /api/frame/playlist?after=&limit=200` → ordered `{ id, caption }` entries for visible photos matching this device's filter, paged (server shuffles with a per-device seed if `random`, so paging stays stable)
 - `GET  /api/frame/events` → SSE: `playlist-changed`, `config-changed`, `reload`
 - `POST /api/frame/heartbeat` → updates `last_seen_at`; response may set a rotated `device_token` cookie
 
 **Admin (admin cookie required)**
 - `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/session` → `{ admin: boolean }` (these three are public, so the login page can reach them)
 - `GET /api/auth/image` → 204 for an admin session or a valid device, otherwise 401 (public route; called by nginx `auth_request`)
-- `POST /api/photos` (upload), `GET /api/photos`, `PATCH /api/photos/:id`, `DELETE /api/photos/:id`
+- `POST /api/photos` (upload), `GET /api/photos`, `PATCH /api/photos/:id` (`hidden`, `caption`), `POST /api/photos/:id/move` `{ after: id | null }`, `DELETE /api/photos/:id`
 - `GET/POST/PATCH/DELETE /api/tags`
 - `POST /api/photos/tags` `{ photo_ids, add: [tag_id], remove: [tag_id] }` (bulk)
 - `GET/POST/PATCH/DELETE /api/presets`
@@ -231,6 +233,8 @@ Deleting a photo removes its `/v/` files along with its row.
 
 The admin home (`/admin`) is built for a phone first. It is a list of frames; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
 
+Each photo in the admin grid has a cached thumbnail, a **Show on frames** checkbox (on by default), a caption field, and a corner handle for dragging it to a new place. The handle also works with the arrow keys. A frame set to `manual` sort follows this order.
+
 Upload also works from the phone (share sheet → browser → upload form with tag picker), but the desktop grid is where bulk tagging and cleanup happen.
 
 ## 8. Frame client (`/` when device cookie present)
@@ -238,6 +242,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 - Single page, no chrome. The page background is the device's **matte color** (default black).
 - **Aspect ratio: never crop.** The image is `object-fit: contain; object-position: center` inside a full-viewport box, so the whole photo is always visible and any unused space (top/bottom for a wide photo on a tall screen, left/right for a portrait photo on a landscape screen) shows the matte. No `cover`, no zoom, no pan. Portrait, square, panoramic, and 4:3 all show in full.
 - **Matte** is per device and changed from the phone like everything else: `matte` is any CSS color (`#000000` default), with quick picks in the admin UI for black, white, warm white, mid grey, and charcoal plus a color input for anything else. `backdrop` chooses between `solid` (the matte color fills the bars) and `blur` (a blurred, scaled copy of the photo fills them; the matte shows only during cross-fades). Saving either pushes `config-changed` and the frame repaints on the next slide.
+- **Captions** are optional. When a photo has one, it shows as small, dim text centered at the bottom of the screen, in the matte bar when there is one. Text stays legible over a photo or a blurred backdrop with a soft shadow. Photos without a caption show nothing.
 - Two stacked `<img>` layers; next image preloaded, 1-second cross-fade. Respects `prefers-reduced-motion`.
 - Fetches the first playlist page on load and on SSE `playlist-changed`; fetches the next page when within 20 ids of the end; advances every `interval_sec`.
 - Sleep window: renders solid black and stops fetching. Frame stays paired.
@@ -285,7 +290,7 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 |---|---|---|
 | 1 | Admin login, upload, variants, photo grid | You can upload from your PC and see thumbnails |
 | 2 | Pairing flow, device tokens, bare slideshow | A Pi shows a code, you approve on phone, photos cycle |
-| 3 | Tags at upload, bulk tagging, per-frame filter + presets on the phone, sleep window, SSE | Toggle "fall" on for the kitchen frame from your phone; it switches on the next slide |
+| 3 | Tag picker at upload, bulk tagging, per-frame filter + presets on the phone, sleep window, SSE | Toggle "fall" on for the kitchen frame from your phone; it switches on the next slide |
 | 4 | Service worker library cache + prefetch, auto-reload, heartbeat, token rotation | Unplug the router; frame keeps going. Reconnect; bandwidth graph on DO stays flat |
 | 5 | Device admin page (last seen, revoke, rename), backups | You can retire a frame without touching it |
 
