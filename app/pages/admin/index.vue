@@ -39,6 +39,11 @@ const announcement = ref('')
 const confirming = ref<string | null>(null)
 const grid = useTemplateRef<HTMLElement>('grid')
 
+async function openInSlideshow(photo: Photo) {
+  await document.documentElement.requestFullscreen?.().catch(() => undefined)
+  await navigateTo({ path: '/', query: { photo: photo.id, ...(tagFilter.value ? { tag: tagFilter.value } : {}) } })
+}
+
 async function loadPhotos(before?: number) {
   loading.value = true
   const page = await $fetch<{ photos: Photo[], next: number | null }>('/api/photos', {
@@ -274,13 +279,21 @@ async function remove(photo: Photo) {
     <ul ref="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7">
       <li v-for="(photo, index) in photos" :key="photo.id" class="flex flex-col gap-2">
         <div class="relative">
-          <img
-            :src="`/v/${photo.id}-640.webp`"
-            :alt="photo.filename"
-            loading="lazy"
-            class="aspect-square w-full object-contain bg-elevated rounded"
-            :class="{ 'opacity-40': photo.hidden }"
+          <button
+            type="button"
+            class="block w-full cursor-zoom-in rounded"
+            :aria-label="`See ${photo.filename} in the slideshow`"
+            title="See in the slideshow"
+            @click="openInSlideshow(photo)"
           >
+            <img
+              :src="`/v/${photo.id}-640.webp`"
+              :alt="photo.filename"
+              loading="lazy"
+              class="aspect-square w-full object-contain bg-elevated rounded"
+              :class="{ 'opacity-40': photo.hidden }"
+            >
+          </button>
           <button
             type="button"
             data-drag-handle

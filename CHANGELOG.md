@@ -6,10 +6,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Clicking a thumbnail opens that photo in the full screen slideshow.
 - Project site for openmantel.com, published with GitHub Pages.
 - Phone remote on each online frame: previous, pause, resume, and next.
 - Docker Compose self-hosting with automatic HTTPS, nightly backups, and a prebuilt image.
-- Self-hosting guide, and the Mantel name, README, social image, and openmantel.com.
+- Self-hosting guide, and the OpenMantel name, README, social image, and openmantel.com.
 - Tags tab for renaming and deleting tags, and search by file name or caption in the photo grid.
 - Frame setup scripts for Mac, Ubuntu, Windows, and Raspberry Pi.
 - `pnpm photos:rebuild` to recreate frame images from originals.
@@ -56,7 +57,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
-- The repository and Docker image are now named `openmantel`.
+- The project is now named OpenMantel, along with its repository and Docker image.
 - Scripts and docs no longer assume one particular server or domain.
 - Captions sit on a semi-transparent, edge-to-edge band, so they read on the lightest photos.
 - The admin opens on the photo library, with frames on their own tab.

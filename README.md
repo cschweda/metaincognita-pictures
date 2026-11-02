@@ -1,10 +1,10 @@
-![Mantel: your photos on every screen in the house](docs/og-image.png)
+![OpenMantel: your photos on every screen in the house](docs/og-image.png)
 
-# Mantel
+# OpenMantel
 
-[Mantel](https://openmantel.com) is a free, open source picture frame you host yourself. Put a small computer behind a monitor on the kitchen counter, plug it in, and your photos are on display. Store-bought digital frames do the same thing for a lot more money, and often with a subscription or someone else's cloud.
+[OpenMantel](https://openmantel.com) is a free, open source picture frame you host yourself. Put a small computer behind a monitor on the kitchen counter, plug it in, and your photos are on display. Store-bought digital frames do the same thing for a lot more money, and often with a subscription or someone else's cloud.
 
-Mantel is part of the [metaincognita](https://metaincognita.com) suite of simulations and tools, and it stands entirely on its own. Run it on a $6 VPS or add it to your homelab. Your photos stay on your server, and nothing else is involved: no accounts, no tracking, and no outside services.
+OpenMantel is part of the [metaincognita](https://metaincognita.com) suite of simulations and tools, and it stands entirely on its own. Run it on a $6 VPS or add it to your homelab. Your photos stay on your server, and nothing else is involved: no accounts, no tracking, and no outside services.
 
 ## What it does
 

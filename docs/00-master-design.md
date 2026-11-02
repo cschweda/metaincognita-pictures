@@ -1,4 +1,4 @@
-# Mantel — Doc 00: Master Design
+# OpenMantel — Doc 00: Master Design
 
 **Project:** Self-hosted digital picture frame
 **Status:** Draft v0.1 — 2026-11-02
@@ -258,7 +258,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 
 **Start slideshow** at the top of the admin plays in that browser with no pairing, using the same page as a frame. The admin session may read `GET /api/frame/config` and `GET /api/frame/playlist`, and nothing else under `/api/frame/`.
 
-The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order.
+The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order. Clicking a thumbnail opens the slideshow on that photo.
 
 The left and right arrow keys change photos, on frames too. Esc leaves the slideshow and returns to the admin; in full screen the browser keeps Esc for itself, so leaving full screen does the same.
 

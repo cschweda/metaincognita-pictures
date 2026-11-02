@@ -201,6 +201,16 @@ test('the remote reaches a connected frame, and only an admin can use it', async
   assert.equal(asDevice.status, 403)
 })
 
+test('an admin slideshow can open on a chosen photo, even one that is turned off', async () => {
+  const { photo } = await upload('#555555', 'chosen.jpg')
+  await adminJson(`/api/photos/${photo.id}`, 'PATCH', { hidden: true })
+
+  const { photos } = await (await adminFetch(`/api/frame/playlist?first=${photo.id}`)).json()
+  assert.equal(photos[0].id, photo.id)
+  const plain = await (await adminFetch('/api/frame/playlist')).json()
+  assert.ok(!plain.photos.some((item: { id: string }) => item.id === photo.id))
+})
+
 test('photo search matches file names and captions, and treats wildcards literally', async () => {
   const { photo } = await upload('#444444', 'searchable.jpg')
   await adminJson(`/api/photos/${photo.id}`, 'PATCH', { caption: 'Sunset at 100% zoom' })

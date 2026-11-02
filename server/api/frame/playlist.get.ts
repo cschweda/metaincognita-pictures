@@ -44,7 +44,13 @@ export default defineEventHandler((event) => {
   const rows = db.prepare<string[], Entry>(
     `SELECT id, caption FROM photos WHERE hidden = 0 AND ${clause.sql} ORDER BY ${ORDER[sort]}`,
   ).all(...clause.params)
-  const entries = sort === 'random' ? shuffled(rows, device?.id ?? String(query.seed ?? 'admin')) : rows
+  const entries: Entry[] = sort === 'random' ? shuffled(rows, device?.id ?? String(query.seed ?? 'admin')) : rows
+
+  // Clicking a photo in the admin opens the slideshow on that photo, even if it's turned off.
+  if (!device && typeof query.first === 'string') {
+    const first = db.prepare<[string], Entry>(`SELECT id, caption FROM photos WHERE id = ?`).get(query.first)
+    if (first) entries.splice(0, entries.length, first, ...entries.filter(entry => entry.id !== first.id))
+  }
 
   const after = typeof query.after === 'string' ? entries.findIndex(entry => entry.id === query.after) : -1
   const photos = entries.slice(after + 1, after + 1 + limit)

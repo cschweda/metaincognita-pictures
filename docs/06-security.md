@@ -1,4 +1,4 @@
-# Mantel — Doc 06: Security
+# OpenMantel — Doc 06: Security
 
 **Project:** Self-hosted digital picture frame
 **Status:** Draft v0.1 — 2026-11-02

@@ -63,14 +63,16 @@ function inSleepWindow() {
 
 const route = useRoute()
 const previewSeed = String(Math.random())
+let firstPhoto = route.query.photo // Only the first load opens on the clicked photo.
 
 async function fetchPage(after?: string) {
-  const preview = config.value?.preview ? { tag: route.query.tag, seed: previewSeed } : {}
+  const preview = config.value?.preview ? { tag: route.query.tag, seed: previewSeed, first: firstPhoto } : {}
   return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, ...preview } })
 }
 
 async function reloadPlaylist() {
   const page = await fetchPage()
+  firstPhoto = undefined
   entries = page.photos
   nextPage = page.next
   cursor = 0

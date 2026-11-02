@@ -1,6 +1,6 @@
-# Self-hosting Mantel
+# Self-hosting OpenMantel
 
-Mantel runs as one Node process with SQLite. Everything it stores lives in one Docker volume.
+OpenMantel runs as one Node process with SQLite. Everything it stores lives in one Docker volume.
 
 ## What you need
 
@@ -16,13 +16,13 @@ Login cookies are `Secure`, and the offline photo cache needs a secure connectio
 
 ## In a homelab
 
-You have a few ways to give Mantel a real HTTPS address at home:
+You have a few ways to give OpenMantel a real HTTPS address at home:
 
 - **Your existing reverse proxy.** Remove the `caddy` service from `compose.yaml`, publish the `app` service's port 3000 to your proxy, and point the proxy at it. Don't expose port 3000 to the network directly. The proxy must:
   - Set `X-Real-IP` to the client's address, overwriting anything the client sent. Rate limiting depends on this.
   - Turn off response buffering for `/api/frame/events`, or live frame updates are delayed.
   - Allow request bodies of at least 60 MB.
-- **A private network.** Tailscale can issue certificates for machines on your tailnet, and it keeps Mantel off the public internet. Frames must be on the tailnet too.
+- **A private network.** Tailscale can issue certificates for machines on your tailnet, and it keeps OpenMantel off the public internet. Frames must be on the tailnet too.
 - **A tunnel.** Cloudflare Tunnel gives a public HTTPS address with no open ports.
 - **A real domain with a DNS challenge.** Point a domain at the private address and use your proxy's DNS challenge support.
 
