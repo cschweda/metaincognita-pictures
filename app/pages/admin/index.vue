@@ -149,7 +149,11 @@ async function logout() {
   <main class="mx-auto max-w-6xl p-4 flex flex-col gap-6">
     <header class="flex items-center justify-between">
       <h1 class="text-lg font-medium">pictures</h1>
-      <UButton variant="ghost" color="neutral" @click="logout">Log out</UButton>
+      <nav class="flex items-center gap-1">
+        <UButton to="/admin/pair" variant="ghost" color="neutral">Pair a frame</UButton>
+        <UButton to="/admin/sessions" variant="ghost" color="neutral">Sessions</UButton>
+        <UButton variant="ghost" color="neutral" @click="logout">Log out</UButton>
+      </nav>
     </header>
 
     <section class="flex flex-col sm:flex-row sm:items-end gap-3" aria-label="Upload photos">

@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { db } from '../db'
 import type { Session } from '../types'
-import { randomToken } from './tokens'
+import { randomToken, sha256 } from './tokens'
 
 const COOKIE = 'admin_session'
 const MAX_AGE_SECONDS = 1_209_600 // 14 days
@@ -49,6 +49,16 @@ export function readSession(event: H3Event): boolean {
   ).run(id)
   if (bumped.changes > 0) setSessionCookie(event, id)
   return true
+}
+
+/** A stable reference to a session, so the admin UI never handles raw session ids. */
+export function sessionRef(id: string): string {
+  return sha256(id).slice(0, 32)
+}
+
+export function currentSessionRef(event: H3Event): string | null {
+  const id = getCookie(event, COOKIE)
+  return id ? sessionRef(id) : null
 }
 
 export function destroySession(event: H3Event): void {

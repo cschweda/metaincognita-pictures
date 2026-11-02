@@ -45,3 +45,15 @@ export function clearLoginAttempts(ip: string): void {
   attempts.delete(ip)
   attempts.get(GLOBAL_KEY)?.pop()
 }
+
+const hits = new Map<string, number[]>()
+
+/** A plain sliding window, for routes that just refuse once over the limit. */
+export function allowRequest(key: string, limit: number, windowMs: number, now = Date.now()): boolean {
+  const kept = (hits.get(key) ?? []).filter(time => now - time < windowMs)
+  const allowed = kept.length < limit
+  if (allowed) kept.push(now)
+  if (kept.length > 0) hits.set(key, kept)
+  else hits.delete(key)
+  return allowed
+}

@@ -83,7 +83,7 @@ Two completely separate session types.
 ```
 Frame                              Server                         Phone (admin)
   │ GET /                             │                               │
-  │ no device cookie → shows /pair    │                               │
+  │ /api/frame/config 401 → /pair     │                               │
   │ POST /api/pair/start ────────────▶│ create pairing row            │
   │ ◀── { pairing_id, code: "WXK7-4M" }                               │
   │ shows code full-screen            │                               │
@@ -99,6 +99,7 @@ Frame                              Server                         Phone (admin)
 
 Rules:
 - The raw token is never stored. It is minted on the first poll after approval, which is why the `devices` row is created there and not at approval. `approve` stores the name on the pairing row and resets `expires_at` to 10 minutes from then, so the frame has time to claim it.
+- `start` is limited to 12 per hour per IP and 100 pending codes overall, since it is public.
 - Code: 6 characters from an unambiguous alphabet (no 0/O/1/I), shown as `XXX-XXX`. Expires in 10 minutes. One attempt per code; rate-limit approvals.
 - Optional convenience: on `start`, email yourself a link to `/admin/pair?code=WXK7-4M` via Gmail SMTP so approving is one tap. The email is a shortcut into the same flow, not a separate mechanism.
 - Frame reports `screen.width × screen.height` and `devicePixelRatio` at pair time; stored on the device row and used to pick image variants. `start` also records the requester's IP on the pairing row for the approval screen.
@@ -227,7 +228,9 @@ Deleting a photo removes its `/v/` files along with its row.
 - `POST /api/photos/tags` `{ photo_ids, add: [tag_id], remove: [tag_id] }` (bulk)
 - `GET/POST/PATCH/DELETE /api/presets`
 - `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
+- `GET /api/pair/lookup?code=` → screen size, IP, and age of a pending pairing, for the approval screen
 - `POST /api/pair/approve` `{ code, name }`
+- `GET /api/sessions`, `DELETE /api/sessions/:ref` (login sessions; `ref` is a hash, so raw session ids never reach the browser)
 
 ## 7a. Admin on the phone
 

@@ -5,23 +5,28 @@ import { join } from 'node:path'
 
 const base = process.env.SEED_URL ?? 'http://localhost:3100'
 const password = process.env.PICTURES_PASSWORD
-if (!password) {
-  console.error('Set PICTURES_PASSWORD to the admin password.')
+const session = process.env.PICTURES_SESSION
+if (!password && !session) {
+  console.error('Set PICTURES_PASSWORD to the admin password, or PICTURES_SESSION to a session id.')
   process.exit(1)
 }
 
 const headers = { 'X-Requested-With': 'fetch' }
 
-const login = await fetch(`${base}/api/auth/login`, {
-  method: 'POST',
-  headers: { ...headers, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ password }),
-})
-if (!login.ok) {
-  console.error(`Login failed: ${login.status}`)
-  process.exit(1)
+async function logIn(): Promise<string> {
+  const login = await fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!login.ok) {
+    console.error(`Login failed: ${login.status}`)
+    process.exit(1)
+  }
+  return login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ')
 }
-const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ')
+
+const cookie = session ? `admin_session=${session}` : await logIn()
 
 const manifest: { file: string, tags: string[] }[] = JSON.parse(readFileSync('seed/manifest.json', 'utf8'))
 const counts = { added: 0, duplicate: 0, rejected: 0, missing: 0 }
