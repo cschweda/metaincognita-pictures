@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mantel: a free, self-hosted picture frame</title>
+<meta name="description" content="Mantel puts your photos on every screen in the house. Free, open source, and self-hosted, with no accounts and no subscription.">
+<meta property="og:title" content="Mantel">
+<meta property="og:description" content="Your photos on every screen in the house. Free, open source, and self-hosted.">
+<meta property="og:image" content="https://openmantel.com/og-image.png">
+<meta property="og:url" content="https://openmantel.com">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: 'Bricolage'; src: url('fonts/bricolage.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
+:root { --wall: #10181c; --under: #0b1114; --raised: #18242a; --ink: #f2efe6; --soft: #cdd6d7; --muted: #9fb0b5; --gold: #f2b134; --line: #2c3c44; }
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--wall); color: var(--ink); font-family: 'Bricolage', ui-sans-serif, system-ui, sans-serif; font-size: 112.5%; line-height: 1.5; }
+a { color: inherit; }
+a:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.wrap { width: min(1080px, 100%); margin-inline: auto; padding-inline: 1.25rem; }
+.top { display: flex; justify-content: space-between; align-items: center; padding-block: 1.25rem; font-weight: 600; }
+.top nav { display: flex; gap: 1.25rem; color: var(--muted); }
+.top nav a { text-decoration: none; }
+.top nav a:hover { color: var(--ink); }
+.brand { font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; text-decoration: none; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: end; gap: 2rem; padding-top: clamp(1rem, 4vw, 3rem); }
+h1 { font-size: clamp(4.5rem, 14vw, 9.5rem); font-weight: 800; letter-spacing: -.045em; line-height: .92; }
+.lede { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 500; line-height: 1.2; letter-spacing: -.01em; color: var(--soft); margin-top: 1rem; max-width: 22ch; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-block: 1.75rem 2.5rem; }
+.button { display: inline-block; padding: .7rem 1.25rem; border-radius: .4rem; font-weight: 700; text-decoration: none; }
+.button.main { background: var(--gold); color: var(--wall); }
+.button.main:hover { background: #f7ca58; }
+.button.quiet { box-shadow: inset 0 0 0 2px var(--line); }
+.button.quiet:hover { box-shadow: inset 0 0 0 2px var(--muted); }
+.prints { display: flex; align-items: flex-end; justify-content: flex-end; gap: 1rem; }
+.print { background: #05090b; padding: clamp(.4rem, 1vw, .7rem); box-shadow: 0 0 0 2px var(--gold); min-width: 0; }
+.print img { display: block; width: 100%; height: auto; object-fit: cover; }
+.print.small { width: 40%; }
+.print.large { width: 60%; }
+.shelf { height: 14px; background: var(--gold); }
+.below { background: var(--under); padding-block: clamp(2.5rem, 6vw, 4.5rem) 3rem; }
+
+h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 1.25rem; }
+section + section { margin-top: clamp(3rem, 7vw, 5rem); }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.75rem 2.5rem; list-style: none; padding: 0; }
+.features h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: .15rem; }
+.features p, .prose { color: var(--soft); }
+.prose { max-width: 62ch; }
+.prose + .prose { margin-top: .8rem; }
+.steps { list-style: none; padding: 0; counter-reset: step; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.5rem 2.5rem; }
+.steps li { counter-increment: step; color: var(--soft); }
+.steps li::before { content: counter(step); display: block; font-size: 3rem; font-weight: 800; line-height: 1.1; color: var(--ink); letter-spacing: -.03em; }
+pre { background: var(--raised); padding: 1rem 1.15rem; border-radius: .4rem; overflow-x: auto; font-size: .82rem; line-height: 1.6; margin-block: 1rem; max-width: 100%; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+p code { background: var(--raised); padding: .1em .35em; border-radius: .25rem; font-size: .88em; }
+footer { padding-block: 2rem; color: var(--muted); font-size: .9rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; gap: 0; }
+  .prints { margin-top: .5rem; }
+}
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <a class="brand" href="/">Mantel</a>
+  <nav aria-label="Main">
+    <a href="#install">Install</a>
+    <a href="https://github.com/cschweda/openmantel">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <h1>Mantel</h1>
+      <p class="lede">Your photos on every screen in the house.</p>
+      <div class="actions">
+        <a class="button main" href="#install">Host your own</a>
+        <a class="button quiet" href="https://github.com/cschweda/openmantel">View on GitHub</a>
+      </div>
+    </div>
+    <div class="prints">
+      <div class="print small"><img src="images/flowers.jpg" width="507" height="760" alt="Pink blossoms against a blue sky"></div>
+      <div class="print large"><img src="images/sunset.jpg" width="760" height="507" alt="A sunset over a green field and a row of trees"></div>
+    </div>
+  </div>
+  <div class="shelf"></div>
+
+  <div class="below">
+    <div class="wrap">
+      <section>
+        <p class="prose">Mantel is a free, open source picture frame you host yourself. Put a small computer behind a monitor on the kitchen counter, plug it in, and your photos are on display. Store-bought digital frames do the same thing for a lot more money, and often with a subscription or someone else's cloud.</p>
+      </section>
+
+      <section aria-labelledby="features">
+        <h2 id="features">What it does</h2>
+        <ul class="features">
+          <li><h3>Pairs like a Roku</h3><p>A frame shows a code, you enter it on your phone, and it never asks again. Frames need no keyboard and no password.</p></li>
+          <li><h3>Runs from your phone</h3><p>Skip, go back, or pause any frame like a remote. Change what it shows, and it updates instantly.</p></li>
+          <li><h3>Never crops a photo</h3><p>Portrait, square, and panoramic photos all show in full, on a matte or a blurred backdrop, with optional captions.</p></li>
+          <li><h3>Organizes by tag</h3><p>Upload in batches, tag photos, drag them into order, and save presets like Holidays.</p></li>
+          <li><h3>Keeps playing offline</h3><p>Each frame caches the library, so it keeps going without a network, even after a restart.</p></li>
+          <li><h3>Takes iPhone photos</h3><p>HEIC works, photos are rotated correctly, and location data is removed from everything a frame receives.</p></li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="yours">
+        <h2 id="yours">Yours, not a service</h2>
+        <p class="prose">Run it on a small VPS or add it to your homelab. Your photos stay on your server, with no accounts, no tracking, and no outside services. Mantel is MIT licensed and free, and it always will be.</p>
+        <p class="prose">It's part of the <a href="https://metaincognita.com">metaincognita</a> suite of simulations and tools, and it stands entirely on its own.</p>
+      </section>
+
+      <section id="install" aria-labelledby="install-title">
+        <h2 id="install-title">Host your own</h2>
+        <p class="prose">You need a server with Docker and a domain name. HTTPS is required, and the included setup gets the certificate for you.</p>
+<pre><code>git clone https://github.com/cschweda/openmantel.git
+cd openmantel
+cp .env.example .env &amp;&amp; chmod 600 .env   # set DOMAIN
+docker compose run --rm app node_modules/.bin/tsx scripts/hash-password.ts
+# paste the printed line into .env
+docker compose up -d</code></pre>
+        <p class="prose">The <a href="https://github.com/cschweda/openmantel/blob/main/docs/self-hosting.md">self-hosting guide</a> covers homelab setups, your own reverse proxy, updates, and backups.</p>
+      </section>
+
+      <section aria-labelledby="frame">
+        <h2 id="frame">Set up a frame</h2>
+        <ol class="steps">
+          <li>Connect a Mac mini or other small computer to a monitor, and run its setup script once.</li>
+          <li>The screen shows a code. Log in on your phone and enter it.</li>
+          <li>Photos start by themselves. Put the keyboard away.</li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Mantel is free software under the MIT License.</span>
+    <a href="https://github.com/cschweda/openmantel">github.com/cschweda/openmantel</a>
+  </div>
+</footer>
+</body>
+</html>

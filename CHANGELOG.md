@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Project site for openmantel.com, published with GitHub Pages.
 - Phone remote on each online frame: previous, pause, resume, and next.
 - Docker Compose self-hosting with automatic HTTPS, nightly backups, and a prebuilt image.
 - Self-hosting guide, and the Mantel name, README, social image, and openmantel.com.
