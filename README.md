@@ -22,8 +22,8 @@ Mantel is part of the [metaincognita](https://metaincognita.com) suite of simula
 You need a server with Docker and a domain name. HTTPS is required, and the included setup gets the certificate for you.
 
 ```bash
-git clone https://github.com/cschweda/metaincognita-pictures.git mantel
-cd mantel
+git clone https://github.com/cschweda/openmantel.git
+cd openmantel
 cp .env.example .env && chmod 600 .env
 ```
 
@@ -47,7 +47,7 @@ Any computer with a browser and a monitor can be a frame. Open your site in a br
 
 ```bash
 # Mac (needs Google Chrome)
-curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | FRAME_URL=https://your-domain bash
+curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | FRAME_URL=https://your-domain bash
 ```
 
 Ubuntu, Windows, and Raspberry Pi scripts are in [`scripts/`](scripts/). The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve it.

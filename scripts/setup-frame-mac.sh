@@ -2,7 +2,7 @@
 #
 # Turns a Mac into a frame. Run it once while logged in. The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | FRAME_URL=https://pictures.example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | FRAME_URL=https://pictures.example.com bash
 #
 # Chrome runs full screen in its own profile, so your normal Chrome is left alone. Chrome restarts
 # if it crashes or quits, so Cmd-Q won't stop the frame. To stop it, run this script with --remove.

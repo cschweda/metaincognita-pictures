@@ -2,7 +2,7 @@
 # The screen shows a pairing code.
 #
 #   $env:FRAME_URL = 'https://pictures.example.com'
-#   irm https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-windows.ps1 | iex
+#   irm https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-windows.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
 $url = $env:FRAME_URL

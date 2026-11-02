@@ -55,6 +55,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- The repository and Docker image are now named `openmantel`.
 - Scripts and docs no longer assume one particular server or domain.
 - Captions sit on a semi-transparent, edge-to-edge band, so they read on the lightest photos.
 - The admin opens on the photo library, with frames on their own tab.

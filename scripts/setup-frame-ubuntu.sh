@@ -3,7 +3,7 @@
 # Turns an Ubuntu desktop (GNOME) into a frame. Run it once, then log in again or reboot.
 # The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-ubuntu.sh | FRAME_URL=https://pictures.example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-ubuntu.sh | FRAME_URL=https://pictures.example.com bash
 #
 # FRAME_URL is the address of your pictures server.
 #
