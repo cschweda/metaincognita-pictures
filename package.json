@@ -7,7 +7,10 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "hash-password": "tsx scripts/hash-password.ts",
+    "seed:device": "tsx scripts/seed-test-device.ts",
+    "seed:fetch": "tsx scripts/fetch-seed-photos.ts"
   },
   "dependencies": {
     "@nuxt/ui": "^4.12.0",
