@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on 
 ### Added
 
 - Tags tab for renaming and deleting tags, and search by file name or caption in the photo grid.
-- `scripts/setup-frame.sh` to set up a Raspberry Pi as a frame.
+- Frame setup scripts for Mac, Ubuntu, Windows, and Raspberry Pi.
 - `pnpm photos:rebuild` to recreate frame images from originals.
 - API tests, type checking, and a GitHub Actions workflow that runs both.
 - The Frames page says how many frames are online, and lists online frames first.

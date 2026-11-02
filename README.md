@@ -45,13 +45,19 @@ Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and
 
 ## Pairing a frame
 
-On a Raspberry Pi, run this once and reboot. It installs the kiosk browser, restarts it after a crash, and turns off screen blanking. It has not been tried on a real Pi yet.
+The kitchen frame is a Mac mini. Install Google Chrome, then run this once on it while logged in:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame.sh | bash
+curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | bash
 ```
 
-On a mini-PC, use the kiosk setup in Doc 00 §9. The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
+Chrome opens full screen in its own profile and restarts if it crashes or quits, and the Mac stays awake. To stop the frame, download the script and run it with `--remove`.
+
+So the frame returns after a power cut, run `sudo pmset -a autorestart 1` and turn on automatic login in System Settings, which needs FileVault off.
+
+Other machines have their own scripts in `scripts/`: `setup-frame-ubuntu.sh`, `setup-frame-windows.ps1`, and `setup-frame-pi.sh`. None of the four has run on a real frame yet.
+
+The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
 
 ## Deploying
 

@@ -11,7 +11,7 @@
 A single Nuxt app on the DigitalOcean droplet serves two audiences:
 
 - **Admin (you, on a real computer or phone):** log in, upload and tag photos, pair frames, and change what each frame is showing from your phone at any time.
-- **Frames (Pi 5 / mini-PC with a small monitor, no keyboard):** a full-screen browser pointed at the site, showing a slideshow. Frames pair once using a Roku-style code and then never ask again.
+- **Frames (a Mac mini or other small computer with a monitor, no keyboard):** a full-screen browser pointed at the site, showing a slideshow. Frames pair once using a Roku-style code and then never ask again.
 
 All logic lives on the server. The frame is a dumb kiosk.
 
@@ -277,7 +277,12 @@ Goal: each frame downloads each photo once. After the first pass through its pla
 
 Net transfer: roughly library size × number of frames, once, then a few MB a week. Well inside the droplet's included transfer.
 
-## 9. Kiosk setup (Pi OS Bookworm/Trixie, Wayland/labwc)
+## 9. Kiosk setup
+
+The kitchen frame is a Mac mini, set up with `scripts/setup-frame-mac.sh`: Chrome in `--kiosk` mode with its own profile, run by a LaunchAgent with `KeepAlive`, under `caffeinate`. Ubuntu, Windows, and Pi scripts are also in `scripts/`. The Pi details below are for reference.
+
+### Pi OS Bookworm/Trixie, Wayland/labwc
+
 
 `~/.config/labwc/autostart`:
 ```
@@ -313,7 +318,7 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 
 | Phase | Goal | Work | State |
 |---|---|---|---|
-| 6 | A real frame runs for a week | `scripts/setup-frame.sh`, then a real Pi or mini-PC, real iPhone photos, touch dragging | Script written; hardware untested |
+| 6 | The kitchen Mac mini runs for a week | `scripts/setup-frame-mac.sh`, real iPhone photos, touch dragging | Script written; not yet run on the Mac mini |
 | 7 | Recover from losing the droplet | DO droplet backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
 | 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
 | 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | First two done |
