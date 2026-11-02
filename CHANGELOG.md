@@ -61,5 +61,6 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- Frame cards no longer overflow on phones, and a new frame's thumbnail appears right away.
 - `/api/pair/approve` is no longer covered by the public route exemption.
 - `rebuild.sh` no longer exits when its log or backup folder is empty.

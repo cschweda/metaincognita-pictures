@@ -100,7 +100,7 @@ const sleepValue = (value: string) => value || null
 </script>
 
 <template>
-  <li class="flex flex-col gap-4 rounded-lg bg-elevated p-4">
+  <li class="flex min-w-0 flex-col gap-4 rounded-lg bg-elevated p-4">
     <div class="flex items-center gap-3">
       <div class="size-24 shrink-0 rounded" :style="{ backgroundColor: frame.matte }">
         <img

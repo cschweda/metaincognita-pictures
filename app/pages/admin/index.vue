@@ -47,7 +47,7 @@ function removed(id: string) {
       No frames yet. Open this site on a frame's screen, then choose Pair a frame.
     </p>
 
-    <ul class="grid gap-6 lg:grid-cols-2">
+    <ul class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <FrameCard
         v-for="frame in frames"
         :key="frame.id"

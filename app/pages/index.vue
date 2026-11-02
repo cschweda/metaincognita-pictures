@@ -151,7 +151,9 @@ async function advance() {
   failures = 0
   const hidden = 1 - active.value
   slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
+  const firstSlide = !slides[1 - hidden].id
   active.value = hidden
+  if (firstSlide) beat() // So the admin's thumbnail fills in right away.
   sendToWorker({ type: 'shown', url: src })
   warmNext()
   schedule((config.value?.interval_sec ?? 30) * 1000)
