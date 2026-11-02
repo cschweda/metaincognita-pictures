@@ -13,7 +13,7 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/pair/poll',
 ])
 const PUBLIC_ICON_PREFIX = 'GET /api/_nuxt_icon/'
-const DEVICE_PREFIXES = ['/api/frame/', '/api/img/']
+const DEVICE_PREFIXES = ['/api/frame/']
 
 // Public routes that use a browser session, so they need the CSRF header too.
 const CSRF_PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'POST /api/auth/logout'])

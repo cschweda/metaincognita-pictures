@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Frames and the admin grid load images from `/v/<id>-<variant>.webp`, so the service worker can cache them. `/api/img` is removed from the design and from device routes.
 - Image URLs now require an admin session or a valid device, using nginx `auth_request`. This is planned for Phase 1.
 - Photos start on the droplet's disk, with a DO Volume at `/var/pictures` once disk use passes 80%.
 - Root SSH login is key-only (`prohibit-password`) instead of off, because Forge may need it.

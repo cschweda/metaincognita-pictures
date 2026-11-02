@@ -197,7 +197,11 @@ On upload (admin only, multipart, up to ~50 MB each, batch allowed):
 4. Generate variants as WebP, quality 82, longest edge: **640, 1280, 1920, 2560**. Store at `/var/pictures/v/<id>-<size>.webp`.
 5. Insert `photos` row. Done synchronously for small batches; move to a tiny in-process queue if uploads of 100+ become normal.
 
-Frames request `/api/img/<id>?w=<screen_w*dpr>`; server picks the smallest variant ≥ requested width. Nginx serves `/var/pictures/v/` with long cache headers, and every request passes `auth_request` first (Doc 06 §7); the Nitro route only resolves which file and issues an internal redirect (`X-Accel-Redirect`).
+A frame shows one variant size. `GET /api/frame/config` returns it as `variant`: the smallest of 640, 1280, 1920, or 2560 that is at least the screen's longest edge × `dpr`, or 2560 if none is. The size is worked out from the screen details stored at pairing. The longest edge is used because variants are sized by longest edge, so a portrait frame gets the same size as a landscape one.
+
+Frames build image URLs themselves as `/v/<id>-<variant>.webp`, and the admin grid uses the same URLs. Nginx serves `/var/pictures/v/` directly with long cache headers, and every request that reaches it passes `auth_request` first (Doc 06 §7). These are the URLs the service worker caches (§8), so a cached photo never touches the network and offline playback needs no special handling.
+
+Deleting a photo removes its `/v/` files along with its row.
 
 **Disk.** Photos start on the droplet's disk, which holds about 2,000 photos at an estimated 7 MB each (original plus four variants). When disk use passes 80%, mount a DO Volume at `/var/pictures`. All paths stay the same.
 
@@ -208,9 +212,8 @@ Frames request `/api/img/<id>?w=<screen_w*dpr>`; server picks the smallest varia
 - `GET  /api/pair/poll?id=` → `{ status }`; the first poll after approval also sets the `device_token` cookie
 
 **Device (device cookie required)**
-- `GET  /api/frame/config` → interval, sleep window, matte, backdrop, variant width
+- `GET  /api/frame/config` → interval, sleep window, matte, backdrop, `variant` (image size, see §6)
 - `GET  /api/frame/playlist?after=&limit=200` → ordered photo ids matching this device's filter, paged (server shuffles with a per-device seed if `random`, so paging stays stable)
-- `GET  /api/img/:id?w=` → image bytes (via nginx)
 - `GET  /api/frame/events` → SSE: `playlist-changed`, `config-changed`, `reload`
 - `POST /api/frame/heartbeat` → updates `last_seen_at`; response may set a rotated `device_token` cookie
 
@@ -247,7 +250,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 Goal: each frame downloads each photo once. After the first pass through its playlist, a frame pulls only new uploads.
 
 - **HTTP layer.** Variant URLs are immutable (`/v/<id>-<size>.webp`); nginx sends `Cache-Control: private, max-age=31536000, immutable`. Chromium's own cache then skips re-downloads for free, but it evicts under disk pressure, so it is a bonus, not the mechanism.
-- **Service worker + Cache API.** The SW intercepts `/v/*` requests: cache-first, and on a miss fetch from the network and store. Nothing is evicted by age; the cache is the frame's local copy of its library. A 10k-photo library at the 1920 size is ~4 GB, which fits on a 32 GB card or any mini-PC SSD. The SW also caches the current playlist page so a cold start offline still has something to show.
+- **Service worker + Cache API.** The SW intercepts `/v/*` requests: cache-first, and on a miss fetch from the network and store only a successful response, so a `401` is never cached. Nothing is evicted by age; the cache is the frame's local copy of its library. A 10k-photo library at the 1920 size is ~4 GB, which fits on a 32 GB card or any mini-PC SSD. The SW also caches the current playlist page so a cold start offline still has something to show.
 - **Prefetch.** The page tells the SW to warm the next 20 ids in the playlist, so the first pass never shows a loading gap and the frame is idle most of the time.
 - **Budget.** The SW checks `navigator.storage.estimate()`; when usage passes 80% of quota it evicts least-recently-displayed entries. Call `navigator.storage.persist()` once so Chromium doesn't clear the cache on its own.
 - **Invalidation.** Photo ids never change, so there is nothing to invalidate. A deleted photo simply stops appearing in playlists; the SW drops entries not seen in any playlist for 30 days.

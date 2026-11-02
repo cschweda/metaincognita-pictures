@@ -65,9 +65,9 @@ Everything else is hygiene.
 ## 6. Device tokens
 
 - 32 random bytes, base64url. Stored as SHA-256 hash. Raw token lives only in the frame's cookie.
-- **Scope enforced in one place.** A Nitro middleware accepts device tokens only for `/api/frame/*` and `/api/img/*`; every other non-public route rejects them. The public list is exact method-and-path matches, and `/api/pair/approve` is not on it. New routes are denied by default. No per-handler checks.
+- **Scope enforced in one place.** A Nitro middleware accepts device tokens only for `/api/frame/*`; every other non-public route rejects them. The public list is exact method-and-path matches, and `/api/pair/approve` is not on it. New routes are denied by default. No per-handler checks.
 - **Rotation:** on heartbeat, if `token_rotated_at` is older than 30 days, issue a new token via `Set-Cookie`, move the old hash to `prev_token_hash`, and set `prev_token_expires_at` 24 hours ahead so a frame that drops the response isn't locked out. Device lookup accepts either hash while the old one is in its grace window.
-- **Revocation:** `revoked = 1` is checked on every device request. Revoked frames get a `401` and fall back to the pairing screen.
+- **Revocation:** `revoked = 1` is checked on every device request. Revoked frames get a `401` and fall back to the pairing screen. Photos already in a frame's cache stay on it until that cache is cleared; the frame can't download anything new.
 - **Physical compromise:** someone with the SD card gets a read-only token to your photos. Accept this; revoke from the admin page. Encrypting the card isn't worth it for a frame.
 - **Dormant devices:** `last_seen_at` shown in the admin list; a frame silent for 30+ days is flagged as a candidate for revocation.
 

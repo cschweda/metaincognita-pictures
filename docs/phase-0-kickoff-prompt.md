@@ -122,7 +122,7 @@ Phase 0 exists so that every later phase is adding features to something that al
    ```
 3. **Auth middleware** (`server/middleware/auth.ts`). On every request: read the `admin_session` cookie, look it up, set `event.context.admin = true` and bump `last_seen_at`. Read the `device_token` cookie, hash it, look up a non-revoked device, set `event.context.device = row`. Then enforce scope per Doc 06 §6, for `/api/*` paths only, in this order:
    1. **Public routes pass.** The list is exact method-and-path matches: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/session`, `GET /api/health`, `POST /api/pair/start`, `GET /api/pair/poll`. The one prefix match is `GET /api/_nuxt_icon/*`, which Nuxt UI needs for icons. `/api/pair/approve` is deliberately not public.
-   2. **Device routes** (`/api/frame/*`, `/api/img/*`) need a valid device; otherwise 401.
+   2. **Device routes** (`/api/frame/*`) need a valid device; otherwise 401.
    3. **Every other `/api/*` route:** an admin session passes, a valid device token gets 403, and anything else gets 401. An unrecognized or revoked token counts as no token, so it gets 401.
 
    This is the only place scope is checked. Write it so adding a route later cannot accidentally bypass it.
