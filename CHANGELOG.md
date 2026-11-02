@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Phase 0 security checklist status in the README.
 - pm2 ecosystem file, password hash and test device scripts, and droplet setup steps.
 - `/api/health` endpoint.
 - Home, login, and protected admin pages.
