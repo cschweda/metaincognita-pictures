@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // Navigation for every admin page. Pages with `hero` lead with Start slideshow.
-const props = defineProps<{ hero?: boolean, title: string }>()
+const props = defineProps<{ hero?: boolean, title?: string }>()
 const route = useRoute()
 
 const LINKS = [
-  { label: 'Frames', to: '/admin' },
-  { label: 'Photos', to: '/admin/photos' },
+  { label: 'Photos', to: '/admin' },
+  { label: 'Frames', to: '/admin/frames' },
   { label: 'Pair a frame', to: '/admin/pair' },
   { label: 'Sessions', to: '/admin/sessions' },
 ]
@@ -47,7 +47,7 @@ async function logout() {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 flex flex-col gap-8">
+  <div class="mx-auto w-full max-w-6xl px-4 py-3 sm:px-6 flex flex-col gap-4">
     <header class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
       <NuxtLink to="/admin" class="text-2xl font-extrabold tracking-tight">pictures</NuxtLink>
       <nav aria-label="Admin" class="flex flex-wrap items-center gap-1">
@@ -67,22 +67,21 @@ async function logout() {
       </nav>
     </header>
 
-    <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-3">
+    <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
       <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" />
-      <UFormField label="Show photos tagged" size="xl" class="max-w-xl">
+      <UFormField label="Show photos tagged" class="max-w-xl">
         <USelect
           :model-value="tagFilter || 'all'"
           :items="tagItems"
-          size="xl"
+          size="lg"
           class="w-full"
           @update:model-value="tagFilter = $event === 'all' ? '' : String($event)"
         />
       </UFormField>
-      <slot name="below-hero" />
     </section>
 
-    <main class="flex flex-col gap-8">
-      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">{{ title }}</h1>
+    <main class="flex flex-col gap-5">
+      <h1 v-if="title" class="text-4xl sm:text-5xl font-extrabold tracking-tight">{{ title }}</h1>
       <slot />
     </main>
   </div>

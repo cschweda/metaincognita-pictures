@@ -46,7 +46,7 @@ const bars = computed(() => {
       <ul class="flex flex-col gap-2">
         <li v-for="bar in bars" :key="bar.id">
           <NuxtLink
-            :to="{ path: '/admin/photos', query: { tag: bar.id } }"
+            :to="{ path: '/admin', query: { tag: bar.id } }"
             class="grid grid-cols-[7rem_1fr_2.5rem] sm:grid-cols-[10rem_1fr_3rem] items-center gap-3 rounded py-1 hover:bg-elevated"
             :title="`See ${bar.photos} photos tagged ${bar.name}`"
           >

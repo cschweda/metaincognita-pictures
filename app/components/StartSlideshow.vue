@@ -47,11 +47,11 @@ async function start() {
 <style scoped>
 .start {
   display: grid;
-  grid-template-columns: 1fr minmax(0, 38%);
+  grid-template-columns: 1fr minmax(0, 20%);
   align-items: center;
   gap: clamp(1rem, 4vw, 3rem);
   width: 100%;
-  padding: clamp(1.25rem, 4vw, 3rem);
+  padding: clamp(1rem, 2.5vw, 1.75rem) clamp(1rem, 3vw, 2.5rem);
   border-radius: 0.5rem;
   background: var(--color-gold-400);
   color: #10181c;
@@ -73,24 +73,24 @@ async function start() {
 .words {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.25rem;
 }
 .title {
-  font-size: clamp(3rem, 9.5vw, 6.75rem);
+  font-size: clamp(2.5rem, 7.5vw, 5.75rem);
   font-weight: 800;
-  line-height: 0.92;
+  line-height: 1;
   letter-spacing: -0.03em;
 }
 .detail {
-  font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
   font-weight: 500;
 }
 /* A framed print: a dark matte around the photo, with a thin inner edge. */
 .print {
   position: relative;
   display: block;
-  aspect-ratio: 4 / 3;
-  border: clamp(0.5rem, 1.6vw, 1.1rem) solid #10181c;
+  aspect-ratio: 3 / 2;
+  border: clamp(0.4rem, 1vw, 0.7rem) solid #10181c;
   background: #10181c;
   box-shadow: 0 0 0 1px #10181c;
 }

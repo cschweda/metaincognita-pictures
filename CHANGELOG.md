@@ -6,7 +6,6 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
-- Thumbnails of the selected tag, or of all photos, on the admin home.
 - Left and right arrow keys to change photos in the slideshow.
 - Nightly checked SQLite snapshots kept for 14 days, with an optional off-site copy through rclone.
 - Service worker library cache and prefetching, so each frame downloads each photo once and keeps playing offline, even after a restart.
@@ -46,6 +45,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- The admin opens on the photo library. Frames and library numbers moved to a Frames tab.
 - Session ids are stored as hashes, so database backups can't be used to log in. Everyone logs in again once.
 - Subresource integrity is off, because it blocked the page and adds nothing for self-hosted files.
 - File types are read by `sharp` from the file's bytes, in place of the `file-type` package.

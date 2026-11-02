@@ -235,7 +235,7 @@ Deleting a photo removes its `/v/` files along with its row.
 
 ## 7a. Admin on the phone
 
-The admin home (`/admin`) is built for a phone first. It leads with Start slideshow and the library's numbers, then lists the frames; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
+The admin home (`/admin`) is the photo library: Start slideshow, the tag dropdown, and the thumbnails to select and rearrange. Frames are secondary, because the default black matte needs no setup, so they have their own tab at `/admin/frames`, built for a phone first; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
 
 Each photo in the admin grid has a cached thumbnail, a **Show on frames** checkbox (on by default), a caption field, and a corner handle for dragging it to a new place. The handle also works with the arrow keys. A frame set to `manual` sort follows this order.
 
@@ -258,7 +258,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 
 **Start slideshow** at the top of the admin plays in that browser with no pairing, using the same page as a frame. The admin session may read `GET /api/frame/config` and `GET /api/frame/playlist`, and nothing else under `/api/frame/`.
 
-The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order. The admin home lists the same photos under the dropdown.
+The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order.
 
 The left and right arrow keys change photos, on frames too. Esc leaves the slideshow and returns to the admin; in full screen the browser keeps Esc for itself, so leaving full screen does the same.
 
