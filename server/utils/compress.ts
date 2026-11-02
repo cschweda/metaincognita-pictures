@@ -21,7 +21,7 @@ export async function compressOriginal(inputPath: string, outputPath: string): P
   // keepMetadata() leaves the orientation flag in place, so nothing is rotated here.
   await sharp(inputPath, { sequentialRead: true })
     .keepMetadata()
-    .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
+    .jpeg({ quality: JPEG_QUALITY, optimiseCoding: true })
     .toFile(outputPath)
 
   const compressed = await stat(outputPath)

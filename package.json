@@ -21,7 +21,7 @@
     "busboy": "^1.6.0",
     "dotenv": "^18.0.9",
     "exif-reader": "^2.0.3",
-    "heic-convert": "^2.1.0",
+    "heic-decode": "^2.1.0",
     "nuxt": "^4.6.3",
     "nuxt-security": "^2.7.0",
     "sharp": "^0.35.5",
@@ -41,7 +41,6 @@
     "@iconify-json/lucide": "^1.2.150",
     "@types/better-sqlite3": "^9.6.0",
     "@types/busboy": "^1.5.5",
-    "@types/heic-convert": "^2.1.1",
     "@types/sortablejs": "^1.15.9",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

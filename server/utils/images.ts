@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { copyFile, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { copyFile, mkdir, open, rm } from 'node:fs/promises'
+import { promisify } from 'node:util'
 import { join } from 'node:path'
 import exifReader from 'exif-reader'
-import convertHeic from 'heic-convert'
 import sharp from 'sharp'
 import { ulid } from 'ulid'
 import { db } from '../db'
@@ -93,9 +94,23 @@ export type UploadResult =
 
 // sharp can read a HEIC's metadata but not decode it. The decoded pixels are already upright
 // even though the file's EXIF may still say to rotate, so the JPEG carries no orientation.
+//
+// Decoding a 24-megapixel HEIC peaks above 500 MB, so it runs in its own process.
+// That memory is gone when the process exits, and it can't trigger pm2's restart limit.
+const DECODE_HEIC = `
+  const decode = require('heic-decode')
+  const sharp = require('sharp')
+  const { readFileSync } = require('node:fs')
+  const [input, output] = process.argv.slice(1)
+  decode({ buffer: readFileSync(input) })
+    .then(({ width, height, data }) => sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), {
+      raw: { width, height, channels: 4 },
+    }).removeAlpha().jpeg({ quality: 92 }).toFile(output))
+    .catch((error) => { console.error(error); process.exit(1) })
+`
+
 async function decodeHeic(inputPath: string, outputPath: string) {
-  const output = await convertHeic({ buffer: await readFile(inputPath), format: 'JPEG', quality: 0.92 })
-  await writeFile(outputPath, Buffer.from(output))
+  await promisify(execFile)(process.execPath, ['-e', DECODE_HEIC, inputPath, outputPath], { timeout: 120_000 })
 }
 
 /** Runs one uploaded temp file through the pipeline in Doc 00 §6. The caller owns the temp file. */
