@@ -27,6 +27,12 @@ const route = useRoute()
 const tagFilter = useTagFilter()
 if (typeof route.query.tag === 'string') tagFilter.value = route.query.tag
 const busy = ref(false)
+const search = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => loadPhotos(), 300)
+})
 const progress = ref('')
 const problems = ref<string[]>([])
 const announcement = ref('')
@@ -36,7 +42,7 @@ const grid = useTemplateRef<HTMLElement>('grid')
 async function loadPhotos(before?: number) {
   loading.value = true
   const page = await $fetch<{ photos: Photo[], next: number | null }>('/api/photos', {
-    query: { before, tag: tagFilter.value || undefined },
+    query: { before, tag: tagFilter.value || undefined, q: search.value || undefined },
   })
   photos.value = before === undefined ? page.photos : [...photos.value, ...page.photos]
   next.value = page.next
@@ -233,6 +239,9 @@ async function remove(photo: Photo) {
     </div>
 
     <div class="flex flex-wrap items-end gap-3">
+      <UFormField label="Search file names and captions" class="grow max-w-md">
+        <UInput v-model="search" name="search" type="search" class="w-full" />
+      </UFormField>
       <UButton
         variant="soft"
         color="neutral"

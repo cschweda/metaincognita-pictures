@@ -1,5 +1,5 @@
 // Role: device, or admin for a slideshow in their own browser.
-import { VARIANT_SIZES } from '../../utils/images'
+import { VARIANT_SIZES } from '../../utils/variants'
 
 export default defineEventHandler((event) => {
   const device = event.context.device

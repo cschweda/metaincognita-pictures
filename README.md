@@ -36,13 +36,22 @@ pnpm dev              # http://localhost:3100
 | `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
 | `pnpm seed:fetch` | Download the 25 sample photos into `seed/photos/` |
 | `pnpm photos:compress` | Report how much large originals would shrink; add `--apply` to replace them, which can't be undone |
+| `pnpm photos:rebuild` | Rebuild missing frame images from the originals; add `--all` to rebuild every one |
+| `pnpm test` | Run the API tests against a build, using a throwaway database |
+| `pnpm typecheck` | Check types |
 | `pnpm seed:ingest` | Upload those photos through the real route; needs the app running and `PICTURES_PASSWORD` set |
 
 Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and Safari refuses those over plain `http://localhost`.
 
 ## Pairing a frame
 
-Point the frame's browser at the site, using the kiosk setup in Doc 00 §9. It shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
+On a Raspberry Pi, run this once and reboot. It installs the kiosk browser, restarts it after a crash, and turns off screen blanking. It has not been tried on a real Pi yet.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame.sh | bash
+```
+
+On a mini-PC, use the kiosk setup in Doc 00 §9. The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
 
 ## Deploying
 
@@ -121,7 +130,7 @@ Those snapshots are on the same disk as the photos, so they don't protect agains
 2. Install [rclone](https://rclone.org/) and add the bucket with `rclone config`.
 3. Add `BACKUP_REMOTE=spaces:your-bucket/pictures` to `.env`.
 
-To restore, stop the app with `pm2 stop pictures`, copy a snapshot over `/var/pictures/pictures.db`, delete any `pictures.db-wal` and `pictures.db-shm` beside it, and run `pm2 start pictures`. Variants are rebuilt only by uploading again, so restore `orig/` and `v/` together, or re-upload.
+To restore, stop the app with `pm2 stop pictures`, copy a snapshot over `/var/pictures/pictures.db`, delete any `pictures.db-wal` and `pictures.db-shm` beside it, and run `pm2 start pictures`. Restore `orig/` too if it was lost, then run `pnpm photos:rebuild` to recreate the frame images.
 
 ### Security checklist
 

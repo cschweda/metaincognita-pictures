@@ -1,24 +1,22 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { execFile } from 'node:child_process'
 import { copyFile, mkdir, open, rm } from 'node:fs/promises'
-import { promisify } from 'node:util'
 import { join } from 'node:path'
 import exifReader from 'exif-reader'
-import sharp from 'sharp'
+import sharp, { type Metadata } from 'sharp'
 import { ulid } from 'ulid'
 import { db } from '../db'
 import type { Photo } from '../types'
 import { compressOriginal } from './compress'
+import { decodeHeic, VARIANT_SIZES, variantFile, writeVariants } from './variants'
 
-export const VARIANT_SIZES = [640, 1280, 1920, 2560] as const
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
 export const MAX_FILES_PER_REQUEST = 20
 
 const EXTENSIONS = ['jpg', 'png', 'webp', 'tif', 'avif', 'heic']
 
 // sharp reads the format from the file's bytes, so the name and declared type don't count.
-function extensionFor(metadata: sharp.Metadata): string | undefined {
+function extensionFor(metadata: Metadata): string | undefined {
   switch (metadata.format) {
     case 'jpeg': return 'jpg'
     case 'png': return 'png'
@@ -57,7 +55,7 @@ export function picturesPath(...parts: string[]): string {
 }
 
 function variantPath(id: string, size: number): string {
-  return picturesPath('v', `${id}-${size}.webp`)
+  return picturesPath('v', variantFile(id, size))
 }
 
 async function hashFile(path: string): Promise<string> {
@@ -101,27 +99,6 @@ export type UploadResult =
   | { status: 'duplicate' }
   | { status: 'rejected', error: string }
 
-// sharp can read a HEIC's metadata but not decode it. The decoded pixels are already upright
-// even though the file's EXIF may still say to rotate, so the JPEG carries no orientation.
-//
-// Decoding a 24-megapixel HEIC peaks above 500 MB, so it runs in its own process.
-// That memory is gone when the process exits, and it can't trigger pm2's restart limit.
-const DECODE_HEIC = `
-  const decode = require('heic-decode')
-  const sharp = require('sharp')
-  const { readFileSync } = require('node:fs')
-  const [input, output] = process.argv.slice(1)
-  decode({ buffer: readFileSync(input) })
-    .then(({ width, height, data }) => sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), {
-      raw: { width, height, channels: 4 },
-    }).removeAlpha().jpeg({ quality: 92 }).toFile(output))
-    .catch((error) => { console.error(error); process.exit(1) })
-`
-
-async function decodeHeic(inputPath: string, outputPath: string) {
-  await promisify(execFile)(process.execPath, ['-e', DECODE_HEIC, inputPath, outputPath], { timeout: 120_000 })
-}
-
 /** Runs one uploaded temp file through the pipeline in Doc 00 §6. The caller owns the temp file. */
 export function ingestPhoto(tempPath: string, filename: string, tags: string[]): Promise<UploadResult> {
   return enqueue(async () => {
@@ -136,7 +113,6 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
     if (existing) return { status: 'duplicate' }
 
     const id = ulid()
-    const variants = VARIANT_SIZES.map(size => ({ size, path: variantPath(id, size) }))
     const workPath = `${tempPath}.jpg`
     let extension = detected
     let originalPath = picturesPath('orig', `${id}.${extension}`)
@@ -157,14 +133,7 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
       }
       await copyFile(heic ? tempPath : source, originalPath)
 
-      for (const variant of variants) {
-        // No withMetadata(), so EXIF, including GPS, never reaches a frame.
-        await sharp(source, { sequentialRead: true })
-          .rotate()
-          .resize({ width: variant.size, height: variant.size, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 82 })
-          .toFile(variant.path)
-      }
+      await writeVariants(source, id, picturesPath('v'))
 
       const photo = db.transaction(() => {
         const row = db.prepare<[string, string, number, number, string | null, string], Photo>(

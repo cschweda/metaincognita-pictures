@@ -143,7 +143,7 @@ async function advance() {
   failures = 0
   const hidden = 1 - active.value
   slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
-  const firstSlide = !slides[1 - hidden].id
+  const firstSlide = !slides[1 - hidden]?.id
   active.value = hidden
   if (firstSlide) beat() // So the admin's thumbnail fills in right away.
   sendToWorker({ type: 'shown', url: src })
@@ -174,7 +174,7 @@ async function start() {
 async function beat() {
   if (config.value?.preview) return
   try {
-    await $fetch('/api/frame/heartbeat', { method: 'POST', body: { photo_id: slides[active.value].id || null } })
+    await $fetch('/api/frame/heartbeat', { method: 'POST', body: { photo_id: slides[active.value]?.id || null } })
     offline.value = false
   }
   catch (error) {

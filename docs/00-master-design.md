@@ -309,6 +309,18 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 | 4 | Service worker library cache + prefetch, auto-reload, heartbeat, token rotation | Unplug the router; frame keeps going. Reconnect; bandwidth graph on DO stays flat |
 | 5 | Device admin page (last seen, revoke, rename), backups | You can retire a frame without touching it |
 
+### Roadmap after Phase 5
+
+| Phase | Goal | Work | State |
+|---|---|---|---|
+| 6 | A real frame runs for a week | `scripts/setup-frame.sh`, then a real Pi or mini-PC, real iPhone photos, touch dragging | Script written; hardware untested |
+| 7 | Recover from losing the droplet | Off-site backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Rehearsal done; off-site copy and rotation need the owner |
+| 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
+| 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | First two done |
+| 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Not started |
+| 11 | Ready for a big library | DO Volume at 80% disk, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
+| 12 | Family can add photos (optional) | Multiple users and passkeys. Changes the one-user security design | Not started; owner decides |
+
 ## 12. Open questions
 
 - One admin user hard-coded, or a `users` table from the start? (Leaning: one user in `.env`, add table only if you ever share it.)

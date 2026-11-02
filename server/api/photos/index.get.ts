@@ -10,10 +10,14 @@ export default defineEventHandler((event) => {
 
   const tag = typeof query.tag === 'string' ? query.tag : null
   const clause = filterClause({ tags: tag ? [tag] : [], mode: 'any' })
+  const search = typeof query.q === 'string' ? query.q.trim().slice(0, 100) : ''
+  // LIKE wildcards in the search text are matched literally.
+  const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`
+  const searchSql = search ? `AND (filename LIKE ? ESCAPE '\\' OR caption LIKE ? ESCAPE '\\')` : ''
 
   const photos = db.prepare<unknown[], Photo>(
-    `SELECT * FROM photos WHERE position < ? AND ${clause.sql} ORDER BY position DESC LIMIT ?`,
-  ).all(before, ...clause.params, limit)
+    `SELECT * FROM photos WHERE position < ? AND ${clause.sql} ${searchSql} ORDER BY position DESC LIMIT ?`,
+  ).all(before, ...clause.params, ...(search ? [pattern, pattern] : []), limit)
 
   const tagRows = photos.length === 0
     ? []
