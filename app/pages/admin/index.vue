@@ -127,7 +127,7 @@ onMounted(() => {
       from.insertBefore(item, from.children[oldIndex + (newIndex < oldIndex ? 1 : 0)] ?? null)
       movePhoto(oldIndex, newIndex)
     },
-  })
+  } as Sortable.Options) // supportPointer is a real option that the type definitions leave out.
 })
 
 const tagNames = computed(() => allTags.value.map(tag => tag.name))
