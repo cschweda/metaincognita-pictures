@@ -40,7 +40,7 @@ Everything else is hygiene.
 | File permissions | `/var/pictures/` owned by `forge`, mode 750. Forge runs nginx as `forge`, the same user as the app, so file permissions can't keep nginx out of `orig/`. |
 | Original photos | The nginx config is the control: no `location`, `root`, or `alias` may resolve to `/var/pictures/` or `orig/`. Only `/var/pictures/v/` is exposed. |
 | Secrets | `.env` mode 600, never committed. Ecosystem file loads it; no secrets inline. |
-| Backups | Spaces key on the droplet is write-only or a separate scoped key, so a compromised droplet cannot delete backups. |
+| Backups | DigitalOcean droplet backups are managed outside the droplet, so a compromised droplet cannot delete them. |
 
 ## 4. Admin authentication
 

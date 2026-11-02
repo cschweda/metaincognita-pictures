@@ -295,7 +295,7 @@ The three that matter most: SSH/firewall hardening with Node bound to localhost;
 
 Also: Argon2id admin password with IP and global rate limits; server-side sessions with a revoke list; CSRF header on state-changing routes; device tokens hashed at rest, returned once, rotated with a 24-hour grace window; `orig/` never served over HTTP; EXIF stripped from variants; strict CSP since nothing third-party loads.
 
-Backups: `scripts/backup.sh` takes a nightly `sqlite3 .backup` and, once `BACKUP_REMOTE` is set, copies it and `/var/pictures/orig/` to DO Spaces through rclone with a write-only key. It keeps originals and the database; variants are not backed up.
+Backups: DigitalOcean droplet backups cover the whole disk, weekly now and daily once live. `scripts/backup.sh` also takes a nightly checked `sqlite3 .backup`, so each droplet backup holds a consistent database. Off-site copies through rclone remain optional, using `BACKUP_REMOTE`.
 
 Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 
@@ -314,11 +314,11 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 | Phase | Goal | Work | State |
 |---|---|---|---|
 | 6 | A real frame runs for a week | `scripts/setup-frame.sh`, then a real Pi or mini-PC, real iPhone photos, touch dragging | Script written; hardware untested |
-| 7 | Recover from losing the droplet | Off-site backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Rehearsal done; off-site copy and rotation need the owner |
+| 7 | Recover from losing the droplet | DO droplet backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
 | 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
 | 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | First two done |
 | 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Not started |
-| 11 | Ready for a big library | DO Volume at 80% disk, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
+| 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because droplet backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
 | 12 | Family can add photos (optional) | Multiple users and passkeys. Changes the one-user security design | Not started; owner decides |
 
 ## 12. Open questions

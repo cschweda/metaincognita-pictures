@@ -124,11 +124,7 @@ The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/
 
 `scripts/backup.sh` runs nightly from the `forge` crontab at 03:17 UTC. It writes a checked SQLite snapshot to `/var/pictures/backups/` and keeps 14 days of them.
 
-Those snapshots are on the same disk as the photos, so they don't protect against losing the droplet. For an off-site copy:
-
-1. Create a DO Spaces bucket and a key limited to it, write-only if possible.
-2. Install [rclone](https://rclone.org/) and add the bucket with `rclone config`.
-3. Add `BACKUP_REMOTE=spaces:your-bucket/pictures` to `.env`.
+DigitalOcean droplet backups protect against losing the droplet: weekly for now, and daily once the site goes live. They cover the database, the originals, and these snapshots. A DO Volume is not included in droplet backups, so moving photos to a Volume means setting up separate backups for it.
 
 To restore, stop the app with `pm2 stop pictures`, copy a snapshot over `/var/pictures/pictures.db`, delete any `pictures.db-wal` and `pictures.db-shm` beside it, and run `pm2 start pictures`. Restore `orig/` too if it was lost, then run `pnpm photos:rebuild` to recreate the frame images.
 
