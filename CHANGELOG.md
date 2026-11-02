@@ -21,6 +21,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Image URLs now require an admin session or a valid device, using nginx `auth_request`. This is planned for Phase 1.
+- Photos start on the droplet's disk, with a DO Volume at `/var/pictures` once disk use passes 80%.
+- Root SSH login is key-only (`prohibit-password`) instead of off, because Forge may need it.
 - Pairing now mints the device token on the first poll after approval and delivers it with `Set-Cookie`.
 - The CSP moved from nginx to the app, using per-request nonces.
 - `rebuild.sh` builds into `.output.new` and swaps it in after a successful build.

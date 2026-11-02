@@ -33,7 +33,7 @@ Everything else is hygiene.
 
 | Control | How |
 |---|---|
-| SSH key auth only, root login off | `PasswordAuthentication no`, `PermitRootLogin no` in `sshd_config`. Forge sets this; verify. |
+| SSH key auth only, root by key only | `PasswordAuthentication no` (set by Forge) and `PermitRootLogin prohibit-password` in `/etc/ssh/sshd_config.d/40-root-login.conf`. Root stays key-accessible because Forge may need it to manage the server. Verify with `sudo sshd -T`. |
 | Firewall | `ufw` allowing only 22, 80, 443. Node binds `127.0.0.1:3100` only (`HOST` in the ecosystem file). |
 | Patching | `unattended-upgrades` enabled for security updates. |
 | Brute-force | `fail2ban` with the default sshd jail. |
@@ -73,10 +73,10 @@ Everything else is hygiene.
 
 ## 7. Image serving
 
-- Variant URLs (`/v/<ulid>-<size>.webp`) are unguessable but not secret; they're served to any request with a valid device cookie.
-- **Optional:** nginx `auth_request` to a tiny Nitro endpoint that validates the cookie before serving from disk. Ten lines; add it if any photos would upset you if leaked. Skip for vacation snapshots.
+- Variant URLs (`/v/<ulid>-<size>.webp`) are unguessable but not secret, so a URL alone must not be enough to see a photo.
+- **Required:** nginx `location /v/` uses `auth_request` to call `GET /api/auth/image`, which returns 204 for an admin session or a valid device and 401 otherwise. The admin grid needs thumbnails too, so both roles pass. Build this in Phase 1, before any real photos are uploaded.
 - **Originals are never served over HTTP.** An admin "download original" button, if wanted, streams through a Nitro handler that checks the admin session.
-- Nginx `location /v/` sets `Cache-Control: public, max-age=31536000, immutable` and nothing else; no directory listing.
+- Nginx `location /v/` sets `Cache-Control: private, max-age=31536000, immutable`; no directory listing.
 
 ## 8. Upload
 
@@ -126,6 +126,7 @@ Each adds maintenance for a threat that doesn't apply to a one-person picture fr
 - [ ] Argon2id hash in place; rate limiter tested by hand
 - [ ] Session table + revoke button working
 - [ ] Device middleware rejects a device cookie on `/api/photos` (test it)
+- [ ] A `/v/` URL returns 401 with no cookies
 - [ ] Pairing approval screen shows IP and screen size
 - [ ] Token returned once; second poll logged
 - [ ] nginx headers and the app's nonce CSP present (check with `curl -I`); `/login` hydrates over HTTPS with no CSP errors in the console

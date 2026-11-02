@@ -197,7 +197,9 @@ On upload (admin only, multipart, up to ~50 MB each, batch allowed):
 4. Generate variants as WebP, quality 82, longest edge: **640, 1280, 1920, 2560**. Store at `/var/pictures/v/<id>-<size>.webp`.
 5. Insert `photos` row. Done synchronously for small batches; move to a tiny in-process queue if uploads of 100+ become normal.
 
-Frames request `/api/img/<id>?w=<screen_w*dpr>`; server picks the smallest variant ≥ requested width. Nginx serves `/var/pictures/v/` directly with long cache headers; the Nitro route only resolves which file and issues an internal redirect (`X-Accel-Redirect`).
+Frames request `/api/img/<id>?w=<screen_w*dpr>`; server picks the smallest variant ≥ requested width. Nginx serves `/var/pictures/v/` with long cache headers, and every request passes `auth_request` first (Doc 06 §7); the Nitro route only resolves which file and issues an internal redirect (`X-Accel-Redirect`).
+
+**Disk.** Photos start on the droplet's disk, which holds about 2,000 photos at an estimated 7 MB each (original plus four variants). When disk use passes 80%, mount a DO Volume at `/var/pictures`. All paths stay the same.
 
 ## 7. API surface
 
@@ -214,6 +216,7 @@ Frames request `/api/img/<id>?w=<screen_w*dpr>`; server picks the smallest varia
 
 **Admin (admin cookie required)**
 - `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/session` → `{ admin: boolean }` (these three are public, so the login page can reach them)
+- `GET /api/auth/image` → 204 for an admin session or a valid device, otherwise 401 (public route; called by nginx `auth_request`)
 - `POST /api/photos` (upload), `GET /api/photos`, `PATCH /api/photos/:id`, `DELETE /api/photos/:id`
 - `GET/POST/PATCH/DELETE /api/tags`
 - `POST /api/photos/tags` `{ photo_ids, add: [tag_id], remove: [tag_id] }` (bulk)
@@ -243,7 +246,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 
 Goal: each frame downloads each photo once. After the first pass through its playlist, a frame pulls only new uploads.
 
-- **HTTP layer.** Variant URLs are immutable (`/v/<id>-<size>.webp`); nginx sends `Cache-Control: public, max-age=31536000, immutable`. Chromium's own cache then skips re-downloads for free, but it evicts under disk pressure, so it is a bonus, not the mechanism.
+- **HTTP layer.** Variant URLs are immutable (`/v/<id>-<size>.webp`); nginx sends `Cache-Control: private, max-age=31536000, immutable`. Chromium's own cache then skips re-downloads for free, but it evicts under disk pressure, so it is a bonus, not the mechanism.
 - **Service worker + Cache API.** The SW intercepts `/v/*` requests: cache-first, and on a miss fetch from the network and store. Nothing is evicted by age; the cache is the frame's local copy of its library. A 10k-photo library at the 1920 size is ~4 GB, which fits on a 32 GB card or any mini-PC SSD. The SW also caches the current playlist page so a cold start offline still has something to show.
 - **Prefetch.** The page tells the SW to warm the next 20 ids in the playlist, so the first pass never shows a loading gap and the frame is idle most of the time.
 - **Budget.** The SW checks `navigator.storage.estimate()`; when usage passes 80% of quota it evicts least-recently-displayed entries. Call `navigator.storage.persist()` once so Chromium doesn't clear the cache on its own.

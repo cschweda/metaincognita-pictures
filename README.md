@@ -102,7 +102,7 @@ The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/
    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
    add_header Referrer-Policy no-referrer;
    ```
-   Set `client_max_body_size` when upload arrives in Phase 1. Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
+   Set `client_max_body_size` and add the `/v/` `auth_request` location when upload arrives in Phase 1. Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
 
 ### Security checklist
 
@@ -111,7 +111,7 @@ From Doc 06 §12:
 | Item | Status |
 |---|---|
 | SSH password login off | Verify on each droplet with `sudo sshd -T \| grep -i passwordauthentication` |
-| Root login off | Verify with `sudo sshd -T \| grep -i permitrootlogin` |
+| Root login by key only | Should print `prohibit-password`: `sudo sshd -T \| grep -i permitrootlogin` |
 | `ufw` allows only 22, 80, and 443 | Verify with `sudo ufw status` |
 | Node bound to `127.0.0.1` | Set in `ecosystem.config.cjs` |
 | `.env` mode 600, not in git | Setup step 5 |
@@ -119,6 +119,7 @@ From Doc 06 §12:
 | Argon2id hash in place; rate limiter tested | Done in Phase 0 |
 | Device cookie rejected on `/api/photos` | Done in Phase 0 |
 | No nginx path reaches `orig/` | Deferred to Phase 2 |
+| `/v/` URLs need a session or device cookie | Deferred to Phase 1 |
 | Session list and revoke button | Deferred to Phase 2 |
 | Pairing approval screen shows IP and screen size | Deferred to Phase 2 |
 | Token returned once; second poll logged | Deferred to Phase 2 |
