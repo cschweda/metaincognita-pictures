@@ -1,30 +1,24 @@
 <script setup lang="ts">
-import type { Stats } from '~/components/LibraryStats.vue'
-
-// Every frame, what it is showing, and the library's numbers.
+// Every frame, and what it is showing.
 definePageMeta({ middleware: 'admin' })
 
 const frames = ref<Frame[]>([])
 const { tags, loadTags } = useTags()
 const presets = ref<Preset[]>([])
-const stats = ref<Stats | null>(null)
 const loading = ref(true)
 let timer: ReturnType<typeof setInterval> | undefined
 
 async function loadFrames() {
   frames.value = (await $fetch<{ devices: Frame[] }>('/api/devices')).devices
 }
-async function loadStats() {
-  stats.value = await $fetch<Stats>('/api/stats')
-}
 async function loadPresets() {
   presets.value = (await $fetch<{ presets: Preset[] }>('/api/presets')).presets
 }
 
 onMounted(async () => {
-  await Promise.all([loadFrames(), loadPresets(), loadStats(), loadTags()])
+  await Promise.all([loadFrames(), loadPresets(), loadTags()])
   loading.value = false
-  timer = setInterval(() => Promise.all([loadFrames(), loadStats()]), 30_000) // Keeps "showing now" fresh.
+  timer = setInterval(loadFrames, 30_000) // Keeps "showing now" fresh.
 })
 onBeforeUnmount(() => clearInterval(timer))
 
@@ -55,7 +49,5 @@ function removed(id: string) {
         @presets-changed="loadPresets"
       />
     </ul>
-
-    <LibraryStats :stats="stats" :tags="tags" />
   </AdminShell>
 </template>

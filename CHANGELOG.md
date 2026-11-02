@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Stats tab with library totals, live CPU, memory, swap, and disk use, and roughly how many more photos will fit.
 - Left and right arrow keys to change photos in the slideshow.
 - Nightly checked SQLite snapshots kept for 14 days, with an optional off-site copy through rclone.
 - Service worker library cache and prefetching, so each frame downloads each photo once and keeps playing offline, even after a restart.
@@ -46,7 +47,7 @@ All notable changes to this project are documented here. The format is based on 
 ### Changed
 
 - Captions sit on a semi-transparent, edge-to-edge band, so they read on the lightest photos.
-- The admin opens on the photo library. Frames and library numbers moved to a Frames tab.
+- The admin opens on the photo library, with frames on their own tab.
 - Session ids are stored as hashes, so database backups can't be used to log in. Everyone logs in again once.
 - Subresource integrity is off, because it blocked the page and adds nothing for self-hosted files.
 - File types are read by `sharp` from the file's bytes, in place of the `file-type` package.

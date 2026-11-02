@@ -6,6 +6,7 @@ const route = useRoute()
 const LINKS = [
   { label: 'Photos', to: '/admin' },
   { label: 'Frames', to: '/admin/frames' },
+  { label: 'Stats', to: '/admin/stats' },
   { label: 'Pair a frame', to: '/admin/pair' },
   { label: 'Sessions', to: '/admin/sessions' },
 ]

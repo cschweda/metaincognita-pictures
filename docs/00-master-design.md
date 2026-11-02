@@ -231,11 +231,12 @@ Deleting a photo removes its `/v/` files along with its row.
 - `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
 - `GET /api/pair/lookup?code=` → screen size, IP, and age of a pending pairing, for the approval screen
 - `POST /api/pair/approve` `{ code, name }`
+- `GET /api/stats` (library totals), `GET /api/stats/server` (CPU, memory, disk, and photos remaining)
 - `GET /api/sessions`, `DELETE /api/sessions/:ref` (login sessions; ids are stored hashed, and `ref` is a short form of the hash)
 
 ## 7a. Admin on the phone
 
-The admin home (`/admin`) is the photo library: Start slideshow, the tag dropdown, and the thumbnails to select and rearrange. Frames are secondary, because the default black matte needs no setup, so they have their own tab at `/admin/frames`, built for a phone first; each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
+The admin home (`/admin`) is the photo library: Start slideshow, the tag dropdown, and the thumbnails to select and rearrange. Frames are secondary, because the default black matte needs no setup, so they have their own tab at `/admin/frames`, built for a phone first. A third tab, `/admin/stats`, shows library totals and server health, including roughly how many more photos fit before the disk reaches 80%. On the Frames tab, each card shows the frame's name, a thumbnail of the photo it is showing now, a last-seen time, and a tag selector inline. Tap a tag chip to toggle it, pick `any`/`all`, or tap a preset. A second row on each card holds the display settings: matte color swatches, solid/blur, interval, sleep window. Saving updates `devices.filter`, the server emits `playlist-changed` on that frame's SSE stream, and the frame refetches its playlist; the next transition is already from the new set. No reload, no re-pairing.
 
 Each photo in the admin grid has a cached thumbnail, a **Show on frames** checkbox (on by default), a caption field, and a corner handle for dragging it to a new place. The handle also works with the arrow keys. A frame set to `manual` sort follows this order.
 
