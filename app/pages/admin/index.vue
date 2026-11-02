@@ -39,6 +39,10 @@ function removed(id: string) {
 
 <template>
   <AdminShell hero title="Your library">
+    <template #below-hero>
+      <TagPhotos />
+    </template>
+
     <LibraryStats :stats="stats" :tags="tags" />
 
     <h2 class="text-4xl sm:text-5xl font-extrabold tracking-tight">Your frames</h2>

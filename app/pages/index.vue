@@ -219,8 +219,23 @@ function exitPreview() {
   navigateTo('/admin')
 }
 
+/** Moves one photo forward or back, right away. */
+function step(direction: 1 | -1) {
+  if (entries.length === 0 || sleeping.value) return
+  // The cursor already points past the photo on screen, so going back skips over it.
+  if (direction === -1) cursor = (cursor - 2 + entries.length) % entries.length
+  schedule(0)
+}
+
 function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape') exitPreview()
+  else if (event.key === 'ArrowRight') step(1)
+  else if (event.key === 'ArrowLeft') step(-1)
+}
+
+// In full screen the browser keeps Esc for itself, so leaving full screen is the signal.
+function onFullscreenChange() {
+  if (!document.fullscreenElement) exitPreview()
 }
 
 async function startCache() {
@@ -233,8 +248,9 @@ async function startCache() {
 
 onMounted(async () => {
   await start()
+  window.addEventListener('keydown', onKey)
   if (config.value?.preview) {
-    window.addEventListener('keydown', onKey)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
     return
   }
   listen()
@@ -261,6 +277,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('online', beat)
   events?.close()
   window.removeEventListener('keydown', onKey)
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
   wakeLock?.release()
 })
 </script>
@@ -277,7 +294,7 @@ onBeforeUnmount(() => {
     <p v-if="empty" class="caption" :style="{ color: captionColor }">No photos to show</p>
     <span v-if="offline && !sleeping" class="offline" role="status" aria-label="Offline" />
     <div v-if="sleeping" class="sleep" />
-    <p v-if="config?.preview" class="hint">Click or press Esc to exit</p>
+    <p v-if="config?.preview" class="hint">Left and right arrows change photos. Esc returns to the admin.</p>
   </main>
 </template>
 

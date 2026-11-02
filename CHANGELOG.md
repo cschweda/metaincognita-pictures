@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Thumbnails of the selected tag, or of all photos, on the admin home.
+- Left and right arrow keys to change photos in the slideshow.
 - Nightly checked SQLite snapshots kept for 14 days, with an optional off-site copy through rclone.
 - Service worker library cache and prefetching, so each frame downloads each photo once and keeps playing offline, even after a restart.
 - Small offline dot on frames, and a page reload every 6 hours.
@@ -62,6 +64,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- Esc now leaves the slideshow in full screen, where the browser would otherwise keep the key.
 - Frame cards no longer overflow on phones, and a new frame's thumbnail appears right away.
 - `/api/pair/approve` is no longer covered by the public route exemption.
 - `rebuild.sh` no longer exits when its log or backup folder is empty.

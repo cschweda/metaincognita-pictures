@@ -78,6 +78,7 @@ async function logout() {
           @update:model-value="tagFilter = $event === 'all' ? '' : String($event)"
         />
       </UFormField>
+      <slot name="below-hero" />
     </section>
 
     <main class="flex flex-col gap-8">
