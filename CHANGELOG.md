@@ -88,6 +88,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- Builds on 1 GB servers no longer run out of Node heap.
 - Esc now leaves the slideshow in full screen, where the browser would otherwise keep the key.
 - Frame cards no longer overflow on phones, and a new frame's thumbnail appears right away.
 - `/api/pair/approve` is no longer covered by the public route exemption.

@@ -84,4 +84,4 @@ pnpm install --frozen-lockfile
 pnpm build
 ```
 
-Set absolute paths in `.env`, then start it with `pm2 start ecosystem.config.cjs`. That binds to `127.0.0.1:3100`. `./rebuild.sh` pulls, builds, backs up, restarts, and checks the health route. A 2 GB swapfile keeps the build from running out of memory on a small server. Schedule `scripts/backup.sh` with cron.
+Set absolute paths in `.env`, then start it with `pm2 start ecosystem.config.cjs`. That binds to `127.0.0.1:3100`. `./rebuild.sh` pulls, builds, backs up, restarts, and checks the health route. On a small server, a 2 GB swapfile plus `NODE_OPTIONS=--max-old-space-size=1536` lets the build finish; `rebuild.sh` sets that option for you. Schedule `scripts/backup.sh` with cron.

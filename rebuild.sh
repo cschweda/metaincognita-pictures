@@ -117,7 +117,8 @@ say "Building"
 # Build beside the live .output: the running app still needs those files, and
 # Nitro empties its output directory during a build. A failed build stops here.
 rm -rf .nuxt .output.new
-BUILD_OUTPUT_DIR=.output.new pnpm build
+# Node's default heap on a 1 GiB server is too small for this build, so it needs room in swap.
+NODE_OPTIONS=--max-old-space-size=1536 BUILD_OUTPUT_DIR=.output.new pnpm build
 [[ -f .output.new/server/index.mjs ]] || die "build produced no .output.new/server/index.mjs"
 ok "build ok"
 
