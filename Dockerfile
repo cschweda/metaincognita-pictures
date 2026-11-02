@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:26-slim
 
 # sqlite3 takes the nightly backups.
 RUN apt-get update \
