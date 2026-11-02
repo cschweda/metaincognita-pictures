@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- SQLite database with a migration runner and the initial schema.
 - Nuxt 4 scaffold with Nuxt UI, `nuxt-security`, SQLite, and pinned pnpm 12.16.1.
 - Master design (Doc 00), security design (Doc 06), and the Phase 0 kickoff prompt.
 - `rebuild.sh` deploy script.
