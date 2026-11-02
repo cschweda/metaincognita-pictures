@@ -44,6 +44,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Session ids are stored as hashes, so database backups can't be used to log in. Everyone logs in again once.
 - Subresource integrity is off, because it blocked the page and adds nothing for self-hosted files.
 - File types are read by `sharp` from the file's bytes, in place of the `file-type` package.
 - Icons are bundled into the client, so the browser never calls the Iconify API.

@@ -23,16 +23,18 @@ export function clientIp(event: H3Event): string {
 
 export function createSession(event: H3Event): void {
   const id = randomToken()
+  // Only the hash is stored, so a database backup can't be used to log in.
   db.prepare(`INSERT INTO sessions (id, user_agent, ip) VALUES (?, ?, ?)`)
-    .run(id, getHeader(event, 'user-agent') ?? null, clientIp(event))
+    .run(sha256(id), getHeader(event, 'user-agent') ?? null, clientIp(event))
   setSessionCookie(event, id)
 }
 
 /** Returns true for a live session, and slides its 14-day expiry at most once a minute. */
 export function readSession(event: H3Event): boolean {
-  const id = getCookie(event, COOKIE)
-  if (!id) return false
+  const cookie = getCookie(event, COOKIE)
+  if (!cookie) return false
 
+  const id = sha256(cookie)
   const session = db.prepare<[string, string], Session>(
     `SELECT * FROM sessions WHERE id = ? AND last_seen_at > datetime('now', ?)`,
   ).get(id, `-${MAX_AGE_SECONDS} seconds`)
@@ -47,22 +49,22 @@ export function readSession(event: H3Event): boolean {
     `UPDATE sessions SET last_seen_at = datetime('now')
      WHERE id = ? AND last_seen_at < datetime('now', '-1 minute')`,
   ).run(id)
-  if (bumped.changes > 0) setSessionCookie(event, id)
+  if (bumped.changes > 0) setSessionCookie(event, cookie)
   return true
 }
 
-/** A stable reference to a session, so the admin UI never handles raw session ids. */
-export function sessionRef(id: string): string {
-  return sha256(id).slice(0, 32)
+/** A short reference to a stored session, for the admin UI. */
+export function sessionRef(storedId: string): string {
+  return storedId.slice(0, 32)
 }
 
 export function currentSessionRef(event: H3Event): string | null {
-  const id = getCookie(event, COOKIE)
-  return id ? sessionRef(id) : null
+  const cookie = getCookie(event, COOKIE)
+  return cookie ? sessionRef(sha256(cookie)) : null
 }
 
 export function destroySession(event: H3Event): void {
-  const id = getCookie(event, COOKIE)
-  if (id) db.prepare(`DELETE FROM sessions WHERE id = ?`).run(id)
+  const cookie = getCookie(event, COOKIE)
+  if (cookie) db.prepare(`DELETE FROM sessions WHERE id = ?`).run(sha256(cookie))
   deleteCookie(event, COOKIE, { path: '/' })
 }

@@ -46,7 +46,7 @@ Everything else is hygiene.
 
 - One user. Password hashed with **Argon2id** (memory 64 MB, iterations 3, parallelism 1). Store the hash in `.env` or a one-row `users` table.
 - **Rate limiting:** 5 attempts per 15 minutes per IP (taken from nginx's `X-Real-IP`, see Doc 00 §2) *and* 20 per hour globally on the account, so a distributed attempt doesn't bypass the IP limit. After the limit, add exponential delay rather than a hard lockout, so you can't be locked out of your own app.
-- **Sessions are server-side.** A `sessions` table (`id`, `created_at`, `last_seen_at`, `user_agent`, `ip`) holding a random 32-byte id. The cookie carries only that id. This makes logout and "sign out everywhere" real.
+- **Sessions are server-side.** A `sessions` table (`id`, `created_at`, `last_seen_at`, `user_agent`, `ip`). The cookie carries a random 32-byte value, and `id` stores only its SHA-256 hash, so a database backup can't be used to log in. This makes logout and "sign out everywhere" real.
 - **Cookie flags:** `HttpOnly; Secure; SameSite=Lax; Path=/`. 14-day sliding expiry.
 - **CSRF:** every state-changing admin route requires a custom header (`X-Requested-With: fetch`) that a cross-site form cannot set. `SameSite=Lax` alone does not cover every case.
 - **Session list** in the admin UI with a revoke button per session, for the stolen-phone case.
