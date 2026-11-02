@@ -22,6 +22,13 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => clearInterval(timer))
 
+// Online frames first, each group in the order the server gives.
+const framesOnlineFirst = computed(() => [
+  ...frames.value.filter(frame => frame.online),
+  ...frames.value.filter(frame => !frame.online),
+])
+const onlineCount = computed(() => frames.value.filter(frame => frame.online).length)
+
 function updated(frame: Frame) {
   frames.value = frames.value.map(item => (item.id === frame.id ? frame : item))
 }
@@ -37,9 +44,13 @@ function removed(id: string) {
       No frames yet. Open this site on a frame's screen, then choose Pair a frame.
     </p>
 
+    <p v-if="frames.length" class="text-xl font-bold tracking-tight" aria-live="polite">
+      {{ onlineCount }} of {{ frames.length }} {{ frames.length === 1 ? 'frame' : 'frames' }} online
+    </p>
+
     <ul class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <FrameCard
-        v-for="frame in frames"
+        v-for="frame in framesOnlineFirst"
         :key="frame.id"
         :frame="frame"
         :tags="tags"

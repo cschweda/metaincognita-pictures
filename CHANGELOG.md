@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- The Frames page says how many frames are online, and lists online frames first.
 - 25 more sample photos, tagged by what they show, with 14 new tags.
 - Stats tab with library totals, live CPU, memory, swap, and disk use, and roughly how many more photos will fit.
 - Left and right arrow keys to change photos in the slideshow.
