@@ -293,7 +293,7 @@ The three that matter most: SSH/firewall hardening with Node bound to localhost;
 
 Also: Argon2id admin password with IP and global rate limits; server-side sessions with a revoke list; CSRF header on state-changing routes; device tokens hashed at rest, returned once, rotated with a 24-hour grace window; `orig/` never served over HTTP; EXIF stripped from variants; strict CSP since nothing third-party loads.
 
-Backups: nightly `sqlite3 .backup` + rsync of `/var/pictures/orig/` to DO Spaces with a write-only key. Variants are regenerable.
+Backups: `scripts/backup.sh` takes a nightly `sqlite3 .backup` and, once `BACKUP_REMOTE` is set, copies it and `/var/pictures/orig/` to DO Spaces through rclone with a write-only key. It keeps originals and the database; variants are not backed up.
 
 Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 

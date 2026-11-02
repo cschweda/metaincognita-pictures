@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Nightly checked SQLite snapshots kept for 14 days, with an optional off-site copy through rclone.
 - Service worker library cache and prefetching, so each frame downloads each photo once and keeps playing offline, even after a restart.
 - Small offline dot on frames, and a page reload every 6 hours.
 - Silent device token rotation every 30 days, with a 24-hour grace window.

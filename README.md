@@ -7,7 +7,7 @@ A self-hosted, cloud-based digital picture frame for one user. A single Nuxt app
 
 All logic lives on the server. The frame is a kiosk that shows what it's told, and it keeps running from its local cache if the network drops.
 
-**Status:** Phase 4. Frames keep a local copy of the library and keep playing offline. Start a slideshow from the admin, or pair frames and control each one from your phone, with tag filters, presets, and instant updates.
+**Status:** Phase 5. All planned phases are built. Frames keep a local copy of the library and keep playing offline. Start a slideshow from the admin, or pair frames and control each one from your phone, with tag filters, presets, and instant updates.
 
 ## Stack
 
@@ -110,6 +110,18 @@ The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/
    client_max_body_size 200M;
    ```
    Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
+
+### Backups
+
+`scripts/backup.sh` runs nightly from the `forge` crontab at 03:17 UTC. It writes a checked SQLite snapshot to `/var/pictures/backups/` and keeps 14 days of them.
+
+Those snapshots are on the same disk as the photos, so they don't protect against losing the droplet. For an off-site copy:
+
+1. Create a DO Spaces bucket and a key limited to it, write-only if possible.
+2. Install [rclone](https://rclone.org/) and add the bucket with `rclone config`.
+3. Add `BACKUP_REMOTE=spaces:your-bucket/pictures` to `.env`.
+
+To restore, stop the app with `pm2 stop pictures`, copy a snapshot over `/var/pictures/pictures.db`, delete any `pictures.db-wal` and `pictures.db-shm` beside it, and run `pm2 start pictures`. Variants are rebuilt only by uploading again, so restore `orig/` and `v/` together, or re-upload.
 
 ### Security checklist
 
