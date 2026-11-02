@@ -8,6 +8,10 @@
 # Build output
 .nuxt
 .output*
+.nitro
+.cache
+.data
+dist
 node_modules
 
 # Local data
@@ -17,3 +21,9 @@ seed/photos/
 # Editor and OS
 .vscode/
 .DS_Store
+.fleet
+.idea
+
+# Logs
+logs
+*.log
