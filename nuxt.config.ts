@@ -4,6 +4,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   devtools: { enabled: false },
   devServer: { port: 3100, host: '127.0.0.1' },
+  app: { head: { title: 'Mantel', meta: [{ name: 'robots', content: 'noindex' }] } },
   ui: { fonts: false },
   colorMode: { preference: 'dark', fallback: 'dark' },
   icon: { provider: 'server', fallbackToApi: false, serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },

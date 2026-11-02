@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 #
-# Nightly backup: a SQLite snapshot on the droplet, and an off-site copy once one is set up.
+# Nightly backup: a SQLite snapshot on this server, and an off-site copy once one is set up.
 # Set BACKUP_REMOTE in .env to an rclone remote, for example spaces:my-bucket/pictures, to enable
 # the off-site copy of the database and originals. Variants can be regenerated, so they're skipped.
 #
 set -Eeuo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-setting() { grep -E "^$1=" .env | cut -d= -f2- | tr -d '"' || true; }
+setting() { grep -E "^$1=" .env 2>/dev/null | cut -d= -f2- | tr -d '"' || true; }
 
-DB_PATH="$(setting NUXT_DB_PATH)"
-PICTURES_DIR="$(setting NUXT_PICTURES_DIR)"
-BACKUP_REMOTE="$(setting BACKUP_REMOTE)"
+# Docker passes settings as environment variables. Elsewhere they come from .env.
+DB_PATH="${NUXT_DB_PATH:-$(setting NUXT_DB_PATH)}"
+PICTURES_DIR="${NUXT_PICTURES_DIR:-$(setting NUXT_PICTURES_DIR)}"
+BACKUP_REMOTE="${BACKUP_REMOTE:-$(setting BACKUP_REMOTE)}"
 KEEP_DAYS=14
 
 [[ -f "$DB_PATH" ]] || { echo "No database at $DB_PATH"; exit 1; }

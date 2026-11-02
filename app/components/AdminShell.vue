@@ -51,7 +51,7 @@ async function logout() {
 <template>
   <div class="mx-auto w-full max-w-6xl px-4 py-3 sm:px-6 flex flex-col gap-4">
     <header class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <NuxtLink to="/admin" class="text-2xl font-extrabold tracking-tight">pictures</NuxtLink>
+      <NuxtLink to="/admin" class="text-2xl font-extrabold tracking-tight">Mantel</NuxtLink>
       <nav aria-label="Admin" class="flex flex-wrap items-center gap-1">
         <NuxtLink
           v-for="link in LINKS"

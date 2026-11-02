@@ -1,14 +1,13 @@
-# pictures.metaincognita.com — Doc 00: Master Design
+# Mantel — Doc 00: Master Design
 
-**Project:** Cloud-based digital picture frame
-**Owner:** Chris Schweda
+**Project:** Self-hosted digital picture frame
 **Status:** Draft v0.1 — 2026-11-02
 
 ---
 
 ## 1. Summary
 
-A single Nuxt app on the DigitalOcean droplet serves two audiences:
+A single Nuxt app on one server serves two audiences:
 
 - **Admin (you, on a real computer or phone):** log in, upload and tag photos, pair frames, and change what each frame is showing from your phone at any time.
 - **Frames (a Mac mini or other small computer with a monitor, no keyboard):** a full-screen browser pointed at the site, showing a slideshow. Frames pair once using a Roku-style code and then never ask again.
@@ -20,13 +19,13 @@ All logic lives on the server. The frame is a dumb kiosk.
 | Layer | Choice |
 |---|---|
 | App | Nuxt 4, Nuxt UI v4, pnpm |
-| Runtime | Node 22 on the droplet (Forge-managed), behind nginx with Let's Encrypt |
+| Runtime | Node 22 behind an HTTPS reverse proxy: Caddy in Docker, or any proxy you already run |
 | Database | SQLite via `better-sqlite3` (single file, WAL mode) |
-| Images | `sharp` for resizing; originals and variants on local disk (`/var/pictures/`) |
-| Process | pm2 with an `ecosystem.config.cjs`, running `.output/server/index.mjs` after `nuxt build`; `pm2 save` + `pm2 startup` so it survives reboots |
+| Images | `sharp` for resizing; originals and variants on local disk (`NUXT_PICTURES_DIR`) |
+| Process | Docker Compose (`docs/self-hosting.md`), or pm2 with `ecosystem.config.cjs` |
 | Push to frames | Server-Sent Events from Nitro (one-way, cheap) |
 
-This is a server-heavy app (persistent storage, long-running SSE, image processing), so it does not fit Netlify — droplet is correct.
+This is a server-heavy app (persistent storage, long-running SSE, image processing), so it needs a real server, not static or serverless hosting.
 
 ### Process management (pm2)
 
@@ -39,7 +38,7 @@ module.exports = {
   apps: [{
     name: 'pictures',
     script: '.output/server/index.mjs',
-    cwd: '/home/forge/pictures.metaincognita.com',
+    cwd: '/srv/mantel',
     instances: 1,                 // SQLite + SSE: keep to one process, no cluster mode
     exec_mode: 'fork',
     autorestart: true,
@@ -50,14 +49,14 @@ module.exports = {
       PORT: 3100,
       HOST: '127.0.0.1',
     },
-    error_file: '/home/forge/.pm2/logs/pictures-error.log',
-    out_file:   '/home/forge/.pm2/logs/pictures-out.log',
+    error_file: '/home/app user/.pm2/logs/pictures-error.log',
+    out_file:   '/home/app user/.pm2/logs/pictures-out.log',
     time: true,
   }],
 }
 ```
 
-Deploy with `./rebuild.sh`, the only deploy path. It builds into `.output.new` and swaps it into `.output` only after the build succeeds, so a failed build leaves the running site alone. This needs `nitro.output.dir` in `nuxt.config.ts` to read `BUILD_OUTPUT_DIR`, defaulting to `.output`. Nginx proxies `pictures.metaincognita.com` → `127.0.0.1:3100` with `proxy_buffering off` on the `/api/frame/events` location so SSE streams through.
+Deploy with `./rebuild.sh`, the only deploy path. It builds into `.output.new` and swaps it into `.output` only after the build succeeds, so a failed build leaves the running site alone. This needs `nitro.output.dir` in `nuxt.config.ts` to read `BUILD_OUTPUT_DIR`, defaulting to `.output`. Nginx proxies `pictures.example.com` → `127.0.0.1:3100` with `proxy_buffering off` on the `/api/frame/events` location so SSE streams through.
 
 Nginx sets `proxy_set_header X-Real-IP $remote_addr` on every proxied location, overwriting anything the client sent. The app takes the client IP from that header only, falling back to the socket address in dev. Without this every request appears to come from `127.0.0.1`, which breaks the per-IP rate limit and the IP shown on the pairing screen.
 
@@ -197,17 +196,17 @@ On upload (admin only, multipart, up to ~50 MB each, batch allowed):
 
 1. Compute SHA-256 of the file as uploaded; reject duplicates.
 2. Read EXIF with `sharp().metadata()` for orientation and `taken_at`; auto-rotate.
-3. Write original to `/var/pictures/orig/<id>.<ext>`. HEIC files are kept unchanged and decoded to a temporary JPEG for step 4. Other originals over 8 MB are re-encoded as JPEG at quality 85 with EXIF kept, if that saves at least 10%. Smaller files are stored byte for byte. `pnpm photos:compress` does the same for originals already in the library.
-4. Generate variants as WebP, quality 82, longest edge: **640, 1280, 1920, 2560**. Store at `/var/pictures/v/<id>-<size>.webp`.
+3. Write original to `<pictures dir>/orig/<id>.<ext>`. HEIC files are kept unchanged and decoded to a temporary JPEG for step 4. Other originals over 8 MB are re-encoded as JPEG at quality 85 with EXIF kept, if that saves at least 10%. Smaller files are stored byte for byte. `pnpm photos:compress` does the same for originals already in the library.
+4. Generate variants as WebP, quality 82, longest edge: **640, 1280, 1920, 2560**. Store at `<pictures dir>/v/<id>-<size>.webp`.
 5. Insert `photos` row. Done synchronously for small batches; move to a tiny in-process queue if uploads of 100+ become normal.
 
 A frame shows one variant size. `GET /api/frame/config` returns it as `variant`: the smallest of 640, 1280, 1920, or 2560 that is at least the screen's longest edge × `dpr`, or 2560 if none is. The size is worked out from the screen details stored at pairing. The longest edge is used because variants are sized by longest edge, so a portrait frame gets the same size as a landscape one.
 
-Frames build image URLs themselves as `/v/<id>-<variant>.webp`, and the admin grid uses the same URLs. Nginx serves `/var/pictures/v/` directly with long cache headers, and every request that reaches it passes `auth_request` first (Doc 06 §7). These are the URLs the service worker caches (§8), so a cached photo never touches the network and offline playback needs no special handling.
+Frames build image URLs themselves as `/v/<id>-<variant>.webp`, and the admin grid uses the same URLs. Nginx serves `<pictures dir>/v/` directly with long cache headers, and every request that reaches it passes `auth_request` first (Doc 06 §7). These are the URLs the service worker caches (§8), so a cached photo never touches the network and offline playback needs no special handling.
 
 Deleting a photo removes its `/v/` files along with its row.
 
-**Disk.** Photos start on the droplet's disk, which holds about 2,000 photos at an estimated 7 MB each (original plus four variants). When disk use passes 80%, mount a DO Volume at `/var/pictures`. All paths stay the same.
+**Disk.** Photos start on the server's disk, which holds about 2,000 photos at an estimated 7 MB each (original plus four variants). When disk use passes 80%, mount a DO Volume at `<pictures dir>`. All paths stay the same.
 
 ## 7. API surface
 
@@ -275,7 +274,7 @@ Goal: each frame downloads each photo once. After the first pass through its pla
 - **Budget.** The SW checks `navigator.storage.estimate()`; when usage passes 80% of quota it evicts least-recently-displayed entries. Call `navigator.storage.persist()` once so Chromium doesn't clear the cache on its own.
 - **Invalidation.** Photo ids never change, so there is nothing to invalidate. A deleted photo simply stops appearing in playlists; the SW drops entries not seen in any playlist for 30 days.
 
-Net transfer: roughly library size × number of frames, once, then a few MB a week. Well inside the droplet's included transfer.
+Net transfer: roughly library size × number of frames, once, then a few MB a week. Well inside a typical VPS's included transfer.
 
 ## 9. Kiosk setup
 
@@ -288,7 +287,7 @@ The kitchen frame is a Mac mini, set up with `scripts/setup-frame-mac.sh`: Chrom
 ```
 chromium --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required \
-  https://pictures.metaincognita.com &
+  https://pictures.example.com &
 ```
 Plus: disable screen blanking in `raspi-config`, hide cursor (`unclutter` or labwc's cursor timeout), and wrap the launch in a systemd user service with `Restart=always` so a browser crash doesn't leave a black screen.
 
@@ -300,7 +299,7 @@ The three that matter most: SSH/firewall hardening with Node bound to localhost;
 
 Also: Argon2id admin password with IP and global rate limits; server-side sessions with a revoke list; CSRF header on state-changing routes; device tokens hashed at rest, returned once, rotated with a 24-hour grace window; `orig/` never served over HTTP; EXIF stripped from variants; strict CSP since nothing third-party loads.
 
-Backups: DigitalOcean droplet backups cover the whole disk, weekly now and daily once live. `scripts/backup.sh` also takes a nightly checked `sqlite3 .backup`, so each droplet backup holds a consistent database. Off-site copies through rclone remain optional, using `BACKUP_REMOTE`.
+Backups: Server-level backups, such as a VPS provider's, should cover the whole disk. `scripts/backup.sh` also takes a nightly checked `sqlite3 .backup`, so each server backup holds a consistent database. Off-site copies through rclone remain optional, using `BACKUP_REMOTE`.
 
 Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 
@@ -319,11 +318,11 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 | Phase | Goal | Work | State |
 |---|---|---|---|
 | 6 | The kitchen Mac mini runs for a week | `scripts/setup-frame-mac.sh`, real iPhone photos, touch dragging | Script written; not yet run on the Mac mini |
-| 7 | Recover from losing the droplet | DO droplet backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
+| 7 | Recover from losing the server | DO server backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
 | 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
 | 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | First two done |
 | 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Not started |
-| 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because droplet backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
+| 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because server backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
 | 12 | Family can add photos (optional) | Multiple users and passkeys. Changes the one-user security design | Not started; owner decides |
 
 ## 12. Open questions

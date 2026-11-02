@@ -3,13 +3,13 @@
 # Turns a Raspberry Pi (Pi OS Bookworm or Trixie, Wayland/labwc) into a frame.
 # Run it once on the Pi, then reboot. The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-pi.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-pi.sh | FRAME_URL=https://pictures.example.com bash
 #
-# Override the site with FRAME_URL=https://example.com
+# FRAME_URL is the address of your pictures server.
 #
 set -Eeuo pipefail
 
-FRAME_URL="${FRAME_URL:-https://pictures.metaincognita.com}"
+: "${FRAME_URL:?Set FRAME_URL to the address of your pictures server}"
 SERVICE=pictures-frame.service
 SERVICE_DIR="$HOME/.config/systemd/user"
 AUTOSTART="$HOME/.config/labwc/autostart"

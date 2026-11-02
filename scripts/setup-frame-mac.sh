@@ -2,16 +2,16 @@
 #
 # Turns a Mac into a frame. Run it once while logged in. The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | FRAME_URL=https://pictures.example.com bash
 #
 # Chrome runs full screen in its own profile, so your normal Chrome is left alone. Chrome restarts
 # if it crashes or quits, so Cmd-Q won't stop the frame. To stop it, run this script with --remove.
 #
-# Override the site with FRAME_URL=https://example.com
+# FRAME_URL is the address of your pictures server.
 #
 set -Eeuo pipefail
 
-FRAME_URL="${FRAME_URL:-https://pictures.metaincognita.com}"
+FRAME_URL="${FRAME_URL:-}"
 LABEL=com.metaincognita.pictures-frame
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROFILE="$HOME/Library/Application Support/pictures-frame"
@@ -23,6 +23,11 @@ if [[ "${1:-}" == "--remove" ]]; then
   rm -f "$PLIST"
   echo "Frame removed. Its profile is still at $PROFILE."
   exit 0
+fi
+
+if [[ -z "$FRAME_URL" ]]; then
+  echo "Set FRAME_URL to the address of your pictures server."
+  exit 1
 fi
 
 if [[ ! -x "$CHROME" ]]; then

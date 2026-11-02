@@ -1,27 +1,62 @@
-# pictures
+![Mantel: your photos on every screen in the house](docs/og-image.png)
 
-A self-hosted, cloud-based digital picture frame for one user. A single Nuxt app serves two audiences:
+# Mantel
 
-- **Admin:** log in from a computer or phone to upload and tag photos, pair frames, and change what each frame shows.
-- **Frames:** a Raspberry Pi or mini-PC running a full-screen browser. Each frame pairs once with a Roku-style code and then runs on its own.
+Mantel is a free, open source picture frame you host yourself. Put a small computer behind a monitor on the kitchen counter, plug it in, and your photos are on display. Store-bought digital frames do the same thing for a lot more money, and often with a subscription or someone else's cloud.
 
-All logic lives on the server. The frame is a kiosk that shows what it's told, and it keeps running from its local cache if the network drops.
+Mantel is part of the [metaincognita](https://metaincognita.com) suite of simulations and tools, and it stands entirely on its own. Run it on a $6 VPS or add it to your homelab. Your photos stay on your server, and nothing else is involved: no accounts, no tracking, and no outside services.
 
-**Status:** Phase 5. All planned phases are built. Frames keep a local copy of the library and keep playing offline. Start a slideshow from the admin, or pair frames and control each one from your phone, with tag filters, presets, and instant updates.
+## What it does
 
-## Stack
+- **Pairs like a Roku.** A frame shows a code, you enter it on your phone, and it never asks again. Frames need no keyboard and no password.
+- **Runs from your phone.** Change what each frame shows, its matte color, timing, and sleep hours, and the frame updates instantly.
+- **Never crops.** Portrait, square, and panoramic photos all show in full, on a matte or a blurred backdrop, with optional captions.
+- **Organizes by tag.** Upload in batches, tag photos, drag them into order, and save presets like "Holidays".
+- **Keeps playing offline.** Each frame caches the library, so it keeps going without a network, even after a restart.
+- **Takes iPhone photos.** HEIC works, and photos are rotated correctly. Location data is removed from everything a frame receives.
+- **Starts a slideshow anywhere.** Any logged-in browser can play one full screen, with no pairing.
+- **Looks after itself.** It takes nightly database snapshots and shows server health and remaining space.
 
-Nuxt 4, Nuxt UI v4, TypeScript, and pnpm on Node 22, with SQLite (`better-sqlite3`) and `sharp`. It runs under pm2 behind nginx on a DigitalOcean droplet, at `pictures.metaincognita.com`.
+## Self-hosting
 
-## Documentation
+You need a server with Docker and a domain name. HTTPS is required, and the included setup gets the certificate for you.
 
-| File | Contents |
-|---|---|
-| [`docs/00-master-design.md`](docs/00-master-design.md) | Architecture, data model, API, frame client, and phases |
-| [`docs/06-security.md`](docs/06-security.md) | Threat model, controls, and the ship checklist |
-| [`docs/phase-0-kickoff-prompt.md`](docs/phase-0-kickoff-prompt.md) | Build instructions for Phase 0 |
+```bash
+git clone https://github.com/cschweda/metaincognita-pictures.git mantel
+cd mantel
+cp .env.example .env && chmod 600 .env
+```
 
-## Local development
+Set `DOMAIN` in `.env`, then create your admin password:
+
+```bash
+docker compose run --rm app node_modules/.bin/tsx scripts/hash-password.ts
+```
+
+Paste the line it prints into `.env`, replacing the empty `NUXT_ADMIN_PASSWORD_HASH=` line. Then start it:
+
+```bash
+docker compose up -d
+```
+
+Open `https://your-domain/login`. See [docs/self-hosting.md](docs/self-hosting.md) for homelab setups, updates, backups, and troubleshooting.
+
+## Setting up a frame
+
+Any computer with a browser and a monitor can be a frame. Open your site in a browser to try it. To run one full time, use the script for that machine. It starts the browser full screen at login, restarts it after a crash, and keeps the screen on.
+
+```bash
+# Mac (needs Google Chrome)
+curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | FRAME_URL=https://your-domain bash
+```
+
+Ubuntu, Windows, and Raspberry Pi scripts are in [`scripts/`](scripts/). The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve it.
+
+The frame scripts have not all been proven on real hardware yet, so reports are welcome.
+
+## Development
+
+Nuxt 4, Nuxt UI, TypeScript, and pnpm on Node 22, with SQLite and `sharp`.
 
 ```bash
 cp .env.example .env && chmod 600 .env
@@ -30,129 +65,22 @@ pnpm hash-password    # paste the printed line into .env
 pnpm dev              # http://localhost:3100
 ```
 
-| Command | Purpose |
-|---|---|
-| `pnpm hash-password` | Print an argon2id hash for `.env` |
-| `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
-| `pnpm seed:fetch` | Download the 25 sample photos into `seed/photos/` |
-| `pnpm photos:compress` | Report how much large originals would shrink; add `--apply` to replace them, which can't be undone |
-| `pnpm photos:rebuild` | Rebuild missing frame images from the originals; add `--all` to rebuild every one |
-| `pnpm test` | Run the API tests against a build, using a throwaway database |
-| `pnpm typecheck` | Check types |
-| `pnpm seed:ingest` | Upload those photos through the real route; needs the app running and `PICTURES_PASSWORD` set |
-
 Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and Safari refuses those over plain `http://localhost`.
 
-## Pairing a frame
-
-The kitchen frame is a Mac mini. Install Google Chrome, then run this once on it while logged in:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-mac.sh | bash
-```
-
-Chrome opens full screen in its own profile and restarts if it crashes or quits, and the Mac stays awake. To stop the frame, download the script and run it with `--remove`.
-
-So the frame returns after a power cut, run `sudo pmset -a autorestart 1` and turn on automatic login in System Settings, which needs FileVault off.
-
-Other machines have their own scripts in `scripts/`: `setup-frame-ubuntu.sh`, `setup-frame-windows.ps1`, and `setup-frame-pi.sh`. None of the four has run on a real frame yet.
-
-The frame shows a code. Log in on your phone, choose **Pair a frame**, enter the code, check the screen size and IP address, name the frame, and approve. The frame starts by itself.
-
-## Deploying
-
-Run `./rebuild.sh` on the droplet. It pulls `origin/main`, builds beside the live site, backs up SQLite, swaps in the new build, reloads pm2, and checks `/api/health`. A failed build leaves the running site in place.
-
-### First-time droplet setup
-
-The target is a 1 GiB DigitalOcean droplet managed by Forge, with the site at `/home/forge/pictures.metaincognita.com`. Forge manages the nginx site and TLS certificate, so don't run certbot or replace its site file. Edit nginx from the site's Nginx page in Forge.
-
-1. Create a 2 GiB swapfile, replacing any smaller one, so `pnpm build` can't trigger the OOM killer:
-   ```bash
-   sudo swapoff /swapfile
-   sudo fallocate -l 2G /swapfile
-   sudo chmod 600 /swapfile
-   sudo mkswap /swapfile
-   sudo swapon /swapfile
-   ```
-2. Install `sqlite3`, which `rebuild.sh` needs for backups: `sudo apt install sqlite3`.
-3. Create the data folder:
-   ```bash
-   sudo install -d -o forge -g forge -m 750 /var/pictures
-   ```
-4. Clone the repo:
-   ```bash
-   cd /home/forge/pictures.metaincognita.com
-   git clone https://github.com/cschweda/metaincognita-pictures.git .
-   ```
-5. Create `.env`, using absolute paths:
-   ```bash
-   cp .env.example .env && chmod 600 .env
-   ```
-   Set `NUXT_DB_PATH=/var/pictures/pictures.db`, `NUXT_PICTURES_DIR=/var/pictures`, and the `NUXT_ADMIN_PASSWORD_HASH` line from `pnpm hash-password`.
-6. Install and build, then start the app and keep it running after a reboot:
-   ```bash
-   pnpm install --frozen-lockfile
-   ./rebuild.sh
-   pm2 startup    # run the command it prints
-   pm2 save
-   ```
-7. Check that the site's Nginx config contains these, then add the missing nginx headers below:
-   ```nginx
-   location / {
-       proxy_pass http://127.0.0.1:3100;
-       proxy_http_version 1.1;
-       proxy_set_header Host $host;
-       proxy_set_header X-Real-IP $remote_addr;
-       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-       proxy_set_header X-Forwarded-Proto $scheme;
-   }
-
-   location /api/frame/events {
-       proxy_pass http://127.0.0.1:3100;
-       proxy_http_version 1.1;
-       proxy_set_header Host $host;
-       proxy_set_header X-Real-IP $remote_addr;
-       proxy_set_header Connection '';
-       proxy_buffering off;
-       proxy_cache off;
-       proxy_read_timeout 1h;
-   }
-   ```
-   ```nginx
-   add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-   add_header Referrer-Policy no-referrer;
-   client_max_body_size 200M;
-   ```
-   Uptime monitors must use `GET` on `/api/health`, because it doesn't answer `HEAD`.
-
-### Backups
-
-`scripts/backup.sh` runs nightly from the `forge` crontab at 03:17 UTC. It writes a checked SQLite snapshot to `/var/pictures/backups/` and keeps 14 days of them.
-
-DigitalOcean droplet backups protect against losing the droplet: weekly for now, and daily once the site goes live. They cover the database, the originals, and these snapshots. A DO Volume is not included in droplet backups, so moving photos to a Volume means setting up separate backups for it.
-
-To restore, stop the app with `pm2 stop pictures`, copy a snapshot over `/var/pictures/pictures.db`, delete any `pictures.db-wal` and `pictures.db-shm` beside it, and run `pm2 start pictures`. Restore `orig/` too if it was lost, then run `pnpm photos:rebuild` to recreate the frame images.
-
-### Security checklist
-
-From Doc 06 §12:
-
-| Item | Status |
+| Command | Purpose |
 |---|---|
-| SSH password login off | Verify on each droplet with `sudo sshd -T \| grep -i passwordauthentication` |
-| Root login by key only | Should print `prohibit-password`: `sudo sshd -T \| grep -i permitrootlogin` |
-| `ufw` allows only 22, 80, and 443 | Verify with `sudo ufw status` |
-| Node bound to `127.0.0.1` | Set in `ecosystem.config.cjs` |
-| `.env` mode 600, not in git | Setup step 5 |
-| Nginx headers and the app's nonce CSP present | Check with `curl -I`; CSP is set by the app |
-| Argon2id hash in place; rate limiter tested | Done in Phase 0 |
-| Device cookie rejected on `/api/photos` | Done in Phase 0 |
-| No nginx path reaches `orig/` | Done; nginx's root is the repo folder |
-| `/v/` URLs need a session or device cookie | Done in Phase 1 |
-| Session list and revoke button | Done in Phase 2 |
-| Pairing approval screen shows IP and screen size | Done in Phase 2 |
-| Token returned once; second poll logged | Done in Phase 2 |
+| `pnpm test` | Run the API tests against a build, using a throwaway database |
+| `pnpm typecheck` | Check types |
+| `pnpm hash-password` | Print an argon2id hash for `.env` |
+| `pnpm photos:compress` | Report how much large originals would shrink; add `--apply` to replace them, which can't be undone |
+| `pnpm photos:rebuild` | Rebuild missing frame images from the originals; add `--all` to rebuild every one |
+| `pnpm seed:fetch` | Download 50 sample photos into `seed/photos/` |
+| `pnpm seed:ingest` | Upload those photos; needs the app running and `PICTURES_PASSWORD` set |
+| `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
+
+The design is in [docs/00-master-design.md](docs/00-master-design.md), and the threat model is in [docs/06-security.md](docs/06-security.md).
+
+Sample photos come from [Lorem Picsum](https://picsum.photos), which sources them from Unsplash.
 
 ## License
 

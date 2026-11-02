@@ -1,0 +1,11 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.nuxt
+.output*
+node_modules
+data
+seed/photos
+docs

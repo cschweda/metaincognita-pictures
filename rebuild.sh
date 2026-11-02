@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# rebuild.sh — pull, build, and restart pictures.metaincognita.com
+# rebuild.sh — pull, build, and restart pictures under pm2, for installs without Docker
 #
-# Usage (on the droplet, as the forge user):
-#   cd /home/forge/pictures.metaincognita.com && ./rebuild.sh
+# Usage (on the server):
+#   cd /path/to/pictures && ./rebuild.sh
 #
 # Env overrides:
-#   SMOKE_URL        default https://pictures.metaincognita.com
+#   SMOKE_URL        default PUBLIC_URL from .env, then http://127.0.0.1:3100
 #   REBUILD_LOG_DIR  default ~/deploy-logs
 #   SKIP_SMOKE=1     skip the post-restart health check
 #
@@ -15,7 +15,7 @@ set -Eeuo pipefail
 # ---------------------------------------------------------------- config ----
 APP_NAME="pictures"
 BRANCH="main"
-SMOKE_URL="${SMOKE_URL:-https://pictures.metaincognita.com}"
+SMOKE_URL="${SMOKE_URL:-}"
 REBUILD_LOG_DIR="${REBUILD_LOG_DIR:-$HOME/deploy-logs}"
 KEEP_LOGS=30
 MIN_NODE_MAJOR=22
@@ -78,6 +78,10 @@ ok "node $(node -v), pnpm $(pnpm -v), pm2 $(pm2 -v)"
 
 [[ -f .env ]] || die ".env missing — copy .env.example and fill it in"
 [[ -f ecosystem.config.cjs ]] || die "ecosystem.config.cjs missing"
+if [[ -z "$SMOKE_URL" ]]; then
+  SMOKE_URL="$(grep -E '^PUBLIC_URL=' .env | cut -d= -f2- | tr -d '"' || true)"
+  SMOKE_URL="${SMOKE_URL:-http://127.0.0.1:3100}"
+fi
 ok "repo: $REPO_DIR @ ${PREV_HEAD:0:8}"
 
 # ---------------------------------------------------------------- update ----

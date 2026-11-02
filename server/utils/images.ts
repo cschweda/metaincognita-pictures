@@ -38,7 +38,7 @@ async function isHeic(path: string): Promise<boolean> {
   }
 }
 
-// Keeps memory low on a 1 GiB droplet.
+// Keeps memory low on a 1 GiB server.
 sharp.concurrency(1)
 sharp.cache(false)
 

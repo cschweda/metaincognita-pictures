@@ -3,13 +3,13 @@
 # Turns an Ubuntu desktop (GNOME) into a frame. Run it once, then log in again or reboot.
 # The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-ubuntu.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-ubuntu.sh | FRAME_URL=https://pictures.example.com bash
 #
-# Override the site with FRAME_URL=https://example.com
+# FRAME_URL is the address of your pictures server.
 #
 set -Eeuo pipefail
 
-FRAME_URL="${FRAME_URL:-https://pictures.metaincognita.com}"
+: "${FRAME_URL:?Set FRAME_URL to the address of your pictures server}"
 BIN="$HOME/.local/bin/pictures-frame"
 AUTOSTART="$HOME/.config/autostart/pictures-frame.desktop"
 

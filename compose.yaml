@@ -1,0 +1,49 @@
+# Copy .env.example to .env, fill it in, then run: docker compose up -d
+services:
+  app:
+    image: ghcr.io/cschweda/metaincognita-pictures:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NUXT_DB_PATH: /data/pictures.db
+      NUXT_PICTURES_DIR: /data
+    volumes:
+      - pictures:/data
+
+  # Gets and renews the HTTPS certificate for DOMAIN.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Takes a checked database snapshot every night and keeps 14 days of them.
+  backup:
+    image: ghcr.io/cschweda/metaincognita-pictures:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NUXT_DB_PATH: /data/pictures.db
+      NUXT_PICTURES_DIR: /data
+    command: ["sh", "-c", "while true; do sleep 86400; ./scripts/backup.sh; done"]
+    healthcheck:
+      disable: true
+    volumes:
+      - pictures:/data
+
+volumes:
+  pictures:
+  caddy_data:
+  caddy_config:

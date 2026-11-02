@@ -1,0 +1,14 @@
+{$DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+
+	reverse_proxy app:3000 {
+		# The app takes the client's IP from this header for rate limiting.
+		header_up X-Real-IP {remote_host}
+		# Sends live frame updates right away.
+		flush_interval -1
+	}
+}

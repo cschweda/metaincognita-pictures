@@ -1,12 +1,12 @@
 # Turns a Windows PC into a frame. Run it once in PowerShell, then sign out or restart.
 # The screen shows a pairing code.
 #
+#   $env:FRAME_URL = 'https://pictures.example.com'
 #   irm https://raw.githubusercontent.com/cschweda/metaincognita-pictures/main/scripts/setup-frame-windows.ps1 | iex
-#
-# Override the site by setting $env:FRAME_URL first.
 
 $ErrorActionPreference = 'Stop'
-$url = if ($env:FRAME_URL) { $env:FRAME_URL } else { 'https://pictures.metaincognita.com' }
+$url = $env:FRAME_URL
+if (-not $url) { throw 'Set $env:FRAME_URL to the address of your pictures server.' }
 
 $browsers = @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",

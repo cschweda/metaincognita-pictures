@@ -1,7 +1,6 @@
-# pictures.metaincognita.com — Doc 06: Security
+# Mantel — Doc 06: Security
 
-**Project:** Cloud-based digital picture frame
-**Owner:** Chris Schweda
+**Project:** Self-hosted digital picture frame
 **Status:** Draft v0.1 — 2026-11-02
 **Depends on:** Doc 00 (Master Design)
 
@@ -11,13 +10,13 @@
 
 This is a single-user personal app. The realistic threats, in order:
 
-1. **Opportunistic scanning** of the droplet (SSH brute force, known CVEs in exposed services).
+1. **Opportunistic scanning** of the server (SSH brute force, known CVEs in exposed services).
 2. **Admin credential compromise** — the one door that allows upload, delete, and pairing approval.
 3. **Physical access to a frame** — SD card pulled from a Pi, giving the attacker that frame's device token.
 4. **Pairing abuse** — someone starts a pairing and tricks you into approving it, or guesses a code.
 5. **URL leakage** — a variant URL copied from a frame's network traffic.
 
-Out of scope: DDoS, targeted attackers with droplet root, nation-states. Nobody is going to burn a zero-day on a picture frame.
+Out of scope: DDoS, targeted attackers with server root, nation-states. Nobody is going to burn a zero-day on a picture frame.
 
 ## 2. Priority order
 
@@ -29,18 +28,18 @@ If only three things get done, do these:
 
 Everything else is hygiene.
 
-## 3. Droplet hardening
+## 3. Server hardening
 
 | Control | How |
 |---|---|
-| SSH key auth only, root by key only | `PasswordAuthentication no` (set by Forge) and `PermitRootLogin prohibit-password` in `/etc/ssh/sshd_config.d/40-root-login.conf`. Root stays key-accessible because Forge may need it to manage the server. Verify with `sudo sshd -T`. |
+| SSH key auth only, root by key only | `PasswordAuthentication no` and `PermitRootLogin prohibit-password` in `/etc/ssh/sshd_config.d/40-root-login.conf`. Root stays key-accessible if your server manager needs it. Verify with `sudo sshd -T`. |
 | Firewall | `ufw` allowing only 22, 80, 443. Node binds `127.0.0.1:3100` only (`HOST` in the ecosystem file). |
 | Patching | `unattended-upgrades` enabled for security updates. |
 | Brute-force | `fail2ban` with the default sshd jail. |
-| File permissions | `/var/pictures/` owned by `forge`, mode 750. Forge runs nginx as `forge`, the same user as the app, so file permissions can't keep nginx out of `orig/`. |
-| Original photos | The nginx config is the control: no `location`, `root`, or `alias` may resolve to `/var/pictures/` or `orig/`. Only `/var/pictures/v/` is exposed. |
+| File permissions | The pictures folder is owned by the app user, mode 750. Don't rely on file permissions to keep a reverse proxy out of `orig/` if it runs as the same user. |
+| Original photos | The nginx config is the control: the proxy must never serve the pictures folder or `orig/` directly. Images reach clients only through the app's `/v/` route. |
 | Secrets | `.env` mode 600, never committed. Ecosystem file loads it; no secrets inline. |
-| Backups | DigitalOcean droplet backups are managed outside the droplet, so a compromised droplet cannot delete them. |
+| Backups | Keep backups somewhere a compromised server can't delete them, such as a VPS provider's backup feature. |
 
 ## 4. Admin authentication
 
@@ -84,8 +83,8 @@ Everything else is hygiene.
 - Admin session required. Max 50 MB per file, 20 files per request. Uploads stream to disk. Nginx is set to `client_max_body_size 200M`; the 50 MB limit is enforced by the app.
 - File type is read from the bytes by `sharp`, and only JPEG, PNG, WebP, TIFF, AVIF, and HEIC are accepted. The filename and declared type are ignored.
 - Original filename is stored in the DB for display only and never used in a path. Files are named by ULID.
-- Variants are generated without `.withMetadata()`, so EXIF (including GPS) is stripped from everything frames ever see. Originals keep EXIF but never leave the droplet.
-- Processing is sequential (concurrency 1–2) to bound memory on a small droplet.
+- Variants are generated without `.withMetadata()`, so EXIF (including GPS) is stripped from everything frames ever see. Originals keep EXIF but never leave the server.
+- Processing is sequential (concurrency 1–2) to bound memory on a small server.
 
 ## 9. Headers and transport
 
