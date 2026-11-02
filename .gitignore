@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+.nuxt
+.output*
+node_modules
+
+# Local data
+data/
+seed/photos/
+
+# Editor and OS
+.vscode/
+.DS_Store
