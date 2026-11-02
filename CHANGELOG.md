@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- `pnpm seed:fetch` for 25 sample photos in five aspect ratios.
 - Phase 0 security checklist status in the README.
 - pm2 ecosystem file, password hash and test device scripts, and droplet setup steps.
 - `/api/health` endpoint.
