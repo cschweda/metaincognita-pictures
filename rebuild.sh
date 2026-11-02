@@ -124,9 +124,12 @@ STAGE="db backup"
 say "Backing up SQLite before restart"
 DB_PATH="$(grep -E '^NUXT_DB_PATH=' .env | cut -d= -f2- | tr -d '"' || true)"
 if [[ -n "${DB_PATH:-}" && -f "$DB_PATH" ]]; then
-  mkdir -p "$(dirname "$DB_PATH")/backups"
-  sqlite3 "$DB_PATH" ".backup '$(dirname "$DB_PATH")/backups/pre-rebuild-$(date +%Y%m%d-%H%M%S).db'" \
-    && ok "backup written" || warn "sqlite3 backup failed (is sqlite3 installed?)"
+  # Backups hold session ids and device token hashes: owner-only from creation.
+  (
+    umask 077
+    mkdir -p "$(dirname "$DB_PATH")/backups"
+    sqlite3 "$DB_PATH" ".backup '$(dirname "$DB_PATH")/backups/pre-rebuild-$(date +%Y%m%d-%H%M%S).db'"
+  ) && ok "backup written" || warn "sqlite3 backup failed (is sqlite3 installed?)"
   ls -1t "$(dirname "$DB_PATH")"/backups/pre-rebuild-*.db 2>/dev/null | tail -n +11 | xargs -r rm -f || true
 else
   warn "NUXT_DB_PATH not set or DB not created yet; skipping backup"

@@ -15,6 +15,10 @@ All notable changes to this project are documented here. The format is based on 
 - Pairing now mints the device token on the first poll after approval and delivers it with `Set-Cookie`.
 - The CSP moved from nginx to the app, using per-request nonces.
 - `rebuild.sh` builds into `.output.new` and swaps it in after a successful build.
+- `rebuild.sh` creates database backups with owner-only permissions.
+- Phase 0 pins pnpm 12.16.1 and declares its build script policy.
+- Original photos are protected by nginx config, because Forge runs nginx as the app user.
+- `.gitignore` allows `.env.sample` and `.env.local`.
 
 ### Fixed
 

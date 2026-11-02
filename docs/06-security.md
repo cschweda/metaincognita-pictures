@@ -37,7 +37,8 @@ Everything else is hygiene.
 | Firewall | `ufw` allowing only 22, 80, 443. Node binds `127.0.0.1:3100` only (`HOST` in the ecosystem file). |
 | Patching | `unattended-upgrades` enabled for security updates. |
 | Brute-force | `fail2ban` with the default sshd jail. |
-| File permissions | `/var/pictures/` owned by the app user, mode 750. `v/` readable by nginx; `orig/` not readable by nginx at all. |
+| File permissions | `/var/pictures/` owned by `forge`, mode 750. Forge runs nginx as `forge`, the same user as the app, so file permissions can't keep nginx out of `orig/`. |
+| Original photos | The nginx config is the control: no `location`, `root`, or `alias` may resolve to `/var/pictures/` or `orig/`. Only `/var/pictures/v/` is exposed. |
 | Secrets | `.env` mode 600, never committed. Ecosystem file loads it; no secrets inline. |
 | Backups | Spaces key on the droplet is write-only or a separate scoped key, so a compromised droplet cannot delete backups. |
 
@@ -121,7 +122,7 @@ Each adds maintenance for a threat that doesn't apply to a one-person picture fr
 - [ ] `sshd_config` verified; `ufw` shows only 22/80/443
 - [ ] Node bound to `127.0.0.1`
 - [ ] `.env` mode 600, not in git
-- [ ] `orig/` unreadable by nginx
+- [ ] No nginx `location`, `root`, or `alias` reaches `orig/`, and a request for a known original's path returns 404
 - [ ] Argon2id hash in place; rate limiter tested by hand
 - [ ] Session table + revoke button working
 - [ ] Device middleware rejects a device cookie on `/api/photos` (test it)

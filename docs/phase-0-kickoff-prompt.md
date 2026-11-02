@@ -2,9 +2,10 @@
 
 Before pasting, do these by hand:
 
-1. Check that `origin` points to `https://github.com/cschweda/metaincognita-pictures`. `rebuild.sh` deploys from `origin/main`.
-2. Commit the existing files (`docs/`, `rebuild.sh`, `README.md`, `CHANGELOG.md`, `LICENSE`, `.nvmrc`, `.gitignore`) and push to `main`.
-3. Decide how the droplet steps get done. Either give Claude Code SSH access, or run the README's droplet steps yourself once the local work is finished.
+1. Upgrade pnpm on this machine to 12.16.1 to match the droplet. A pnpm 10 install can't switch itself to the pinned version, and a lockfile made by pnpm 10 can fail pnpm 12's checks.
+2. Check that `origin` points to `https://github.com/cschweda/metaincognita-pictures`. `rebuild.sh` deploys from `origin/main`.
+3. Commit the existing files (`docs/`, `rebuild.sh`, `README.md`, `CHANGELOG.md`, `LICENSE`, `.nvmrc`, `.gitignore`) and push to `main`.
+4. Decide how the droplet steps get done. Either give Claude Code SSH access, or run the README's droplet steps yourself once the local work is finished.
 
 Then paste everything below the line into Claude Code at the start of a fresh session.
 
@@ -98,6 +99,16 @@ Phase 0 exists so that every later phase is adding features to something that al
      rateLimiter: false, requestSizeLimiter: false, xssValidator: false, corsHandler: false,
    },
    ```
+   Set `"packageManager": "pnpm@12.16.1"` in `package.json`, and generate `pnpm-lock.yaml` with that version. pnpm 12 fails the install on unreviewed build scripts, which would stop `rebuild.sh`, so commit a `pnpm-workspace.yaml` that declares them. All of these ship prebuilt binaries, so none need to run:
+   ```yaml
+   allowBuilds:
+     argon2: false
+     better-sqlite3: false
+     esbuild: false
+     vue-demi: false
+   ```
+   If an install reports another ignored build script, add it here with `false` unless that package needs the script to work. pnpm 12 also rejects packages published in the last 24 hours, so a lockfile made by pnpm 12 will resolve around them. Do not turn that check off.
+
    `.env.example` lists `NUXT_ADMIN_PASSWORD_HASH`, `NUXT_DB_PATH`, and `NUXT_PICTURES_DIR`, with local paths such as `./data/pictures.db` as the dev defaults.
 2. **Database.** `server/db/index.ts` opens `NUXT_DB_PATH`, sets `journal_mode = WAL` and `foreign_keys = ON`, runs any unapplied migrations from a `_migrations` table. `0001_init.sql` creates every table in Doc 00 §5 verbatim, plus:
    ```sql
@@ -118,7 +129,7 @@ Phase 0 exists so that every later phase is adding features to something that al
 4. **Login.** `POST /api/auth/login` takes `{ password }`, verifies against `NUXT_ADMIN_PASSWORD_HASH` with argon2, creates a session row, sets the cookie (`HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=1209600`). Rate limit per Doc 06 §4 with an in-memory map (good enough for one process), keyed on the `X-Real-IP` header set by nginx, falling back to the socket address in dev. `POST /api/auth/logout` deletes the session and clears the cookie. Require `X-Requested-With: fetch` on both. `GET /api/auth/session` returns `{ admin: boolean }`.
 5. **Pages.** `/` shows the word "pictures" and nothing else. `/login` is a Nuxt UI form with one password field. `/admin` says "admin". `app/middleware/admin.ts` calls `GET /api/auth/session` and redirects to `/login` when `admin` is false. It runs during server rendering too, so forward the request cookies with `useRequestFetch()`.
 6. **Health.** `GET /api/health` returns `{ ok: true, db: true }` after a `SELECT 1`. pm2 and UptimeRobot will hit this.
-7. **Deploy.** `ecosystem.config.cjs` per Doc 00 §2. `rebuild.sh` is already at the repo root; leave it unchanged and commit it with its executable bit. It is the only deploy path (pull → install → build to `.output.new` → SQLite backup → swap into `.output` → `pm2 reload` → health check). Add the exact droplet steps to `README.md`, under its Deploying section (target: the $6 Basic droplet, 1 GiB RAM; the first step is a 2 GiB swapfile so `pnpm build` can't trigger the OOM killer, and the second is `apt install sqlite3`, which `rebuild.sh` needs for backups): clone, `pnpm install --frozen-lockfile`, `cp .env.example .env` and fill it, `pnpm build`, `pm2 start ecosystem.config.cjs`, `pm2 save`, nginx site block (`proxy_set_header X-Real-IP $remote_addr` on every proxied location, and the SSE `proxy_buffering off` location now even though SSE comes later), certbot. Also add `scripts/hash-password.ts`, which prints an argon2 hash for `.env`, and `scripts/seed-test-device.ts`, which inserts a device named `test` and prints its raw token, or deletes that device when run with `--remove`. Pairing doesn't exist yet, so the middleware test below needs this script. Add `pnpm` script entries for all three files in `scripts/`, run with `tsx`.
+7. **Deploy.** `ecosystem.config.cjs` per Doc 00 §2. `rebuild.sh` is already at the repo root; leave it unchanged and commit it with its executable bit. It is the only deploy path (pull → install → build to `.output.new` → SQLite backup → swap into `.output` → `pm2 reload` → health check). Add the exact droplet steps to `README.md`, under its Deploying section (target: the $6 Basic droplet, 1 GiB RAM; the first step is a 2 GiB swapfile, replacing any smaller one, so `pnpm build` can't trigger the OOM killer, and the second is `apt install sqlite3`, which `rebuild.sh` needs for backups): clone, `pnpm install --frozen-lockfile`, `cp .env.example .env` and fill it, `pnpm build`, `pm2 start ecosystem.config.cjs`, `pm2 save`, nginx site block (`proxy_set_header X-Real-IP $remote_addr` on every proxied location, and the SSE `proxy_buffering off` location now even though SSE comes later), certbot. Also add `scripts/hash-password.ts`, which prints an argon2 hash for `.env`, and `scripts/seed-test-device.ts`, which inserts a device named `test` and prints its raw token, or deletes that device when run with `--remove`. Pairing doesn't exist yet, so the middleware test below needs this script. Add `pnpm` script entries for all three files in `scripts/`, run with `tsx`.
 8. **Security checklist** from Doc 06 §12: do the items that apply to Phase 0 (SSH, ufw, localhost bind, `.env` mode, nginx headers) and note in the README which ones are deferred to Phase 2.
 9. **Seed photos.** `scripts/fetch-seed-photos.ts` downloads 25 sample photos into `seed/photos/` (gitignored) and writes `seed/manifest.json`. Source is Lorem Picsum (`https://picsum.photos/id/<id>/<w>/<h>`), which serves Unsplash-licensed photos at any requested size with no API key. Use fixed ids (e.g. 10, 11, 12, 15, 16, 20, 22, 24, 26, 27, 28, 29, 30, 37, 42, 48, 49, 54, 58, 60, 64, 65, 76, 83, 96) so runs are reproducible, and request a deliberate mix of shapes so the frame's letterbox and matte code get exercised:
    - 10 landscape `2400/1600` (3:2)
