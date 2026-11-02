@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- HEIC uploads. The original is kept, and frame images are made from a converted copy.
+- Automatic compression of originals over 8 MB, and `pnpm photos:compress` for the existing library.
 - Photo upload with streaming to disk, duplicate detection, EXIF rotation, and four WebP sizes with metadata removed.
 - Admin grid with cached thumbnails, a Show on frames checkbox, optional captions, and delete.
 - Drag handle on each thumbnail to rearrange photos, which also works with the arrow keys.

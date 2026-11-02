@@ -1,18 +1,20 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { mkdir, open, rename, rm } from 'node:fs/promises'
+import { copyFile, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import exifReader from 'exif-reader'
+import convertHeic from 'heic-convert'
 import sharp from 'sharp'
 import { ulid } from 'ulid'
 import { db } from '../db'
 import type { Photo } from '../types'
+import { compressOriginal } from './compress'
 
 export const VARIANT_SIZES = [640, 1280, 1920, 2560] as const
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
 export const MAX_FILES_PER_REQUEST = 20
 
-const EXTENSIONS = ['jpg', 'png', 'webp', 'tif', 'avif']
+const EXTENSIONS = ['jpg', 'png', 'webp', 'tif', 'avif', 'heic']
 
 // sharp reads the format from the file's bytes, so the name and declared type don't count.
 function extensionFor(metadata: sharp.Metadata): string | undefined {
@@ -89,32 +91,51 @@ export type UploadResult =
   | { status: 'duplicate' }
   | { status: 'rejected', error: string }
 
+// sharp can read a HEIC's metadata but not decode it. The decoded pixels are already upright
+// even though the file's EXIF may still say to rotate, so the JPEG carries no orientation.
+async function decodeHeic(inputPath: string, outputPath: string) {
+  const output = await convertHeic({ buffer: await readFile(inputPath), format: 'JPEG', quality: 0.92 })
+  await writeFile(outputPath, Buffer.from(output))
+}
+
 /** Runs one uploaded temp file through the pipeline in Doc 00 §6. The caller owns the temp file. */
 export function ingestPhoto(tempPath: string, filename: string, tags: string[]): Promise<UploadResult> {
   return enqueue(async () => {
     const metadata = await sharp(tempPath).metadata().catch(() => null)
-    const extension = metadata ? extensionFor(metadata) : undefined
-    if (!metadata || !extension) {
-      const heic = await isHeic(tempPath)
-      return { status: 'rejected', error: heic ? 'HEIC is not supported yet. Export as JPEG.' : 'Not a supported image.' }
-    }
+    const heic = await isHeic(tempPath)
+    const detected = heic ? 'heic' : metadata ? extensionFor(metadata) : undefined
+    if (!metadata || !detected) return { status: 'rejected', error: 'Not a supported image.' }
 
+    // Hashed before any conversion, so uploading the same file twice is still a duplicate.
     const hash = await hashFile(tempPath)
     const existing = db.prepare(`SELECT 1 FROM photos WHERE hash = ?`).get(hash)
     if (existing) return { status: 'duplicate' }
 
     const id = ulid()
-    const originalPath = picturesPath('orig', `${id}.${extension}`)
     const variants = VARIANT_SIZES.map(size => ({ size, path: variantPath(id, size) }))
+    const workPath = `${tempPath}.jpg`
+    let extension = detected
+    let originalPath = picturesPath('orig', `${id}.${extension}`)
 
     try {
-      const { width, height } = metadata.autoOrient
+      let source = tempPath
+      if (heic) {
+        await decodeHeic(tempPath, workPath)
+        source = workPath
+      }
 
-      await rename(tempPath, originalPath)
+      const { width, height } = (await sharp(source).metadata()).autoOrient
+
+      if (!heic && await compressOriginal(tempPath, workPath)) {
+        extension = 'jpg'
+        originalPath = picturesPath('orig', `${id}.jpg`)
+        source = workPath
+      }
+      await copyFile(heic ? tempPath : source, originalPath)
 
       for (const variant of variants) {
         // No withMetadata(), so EXIF, including GPS, never reaches a frame.
-        await sharp(originalPath, { sequentialRead: true })
+        await sharp(source, { sequentialRead: true })
           .rotate()
           .resize({ width: variant.size, height: variant.size, fit: 'inside', withoutEnlargement: true })
           .webp({ quality: 82 })
@@ -138,6 +159,9 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
       await removeFiles(id, originalPath)
       console.error(`[photos] failed to process ${id}`, error)
       return { status: 'rejected', error: 'Could not process this image.' }
+    }
+    finally {
+      await rm(workPath, { force: true })
     }
   })
 }

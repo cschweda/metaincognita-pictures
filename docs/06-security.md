@@ -82,7 +82,7 @@ Everything else is hygiene.
 ## 8. Upload
 
 - Admin session required. Max 50 MB per file, 20 files per request. Uploads stream to disk. Nginx needs `client_max_body_size 60m`.
-- File type is read from the bytes by `sharp`, and only JPEG, PNG, WebP, TIFF, and AVIF are accepted. The filename and declared type are ignored.
+- File type is read from the bytes by `sharp`, and only JPEG, PNG, WebP, TIFF, AVIF, and HEIC are accepted. The filename and declared type are ignored.
 - Original filename is stored in the DB for display only and never used in a path. Files are named by ULID.
 - Variants are generated without `.withMetadata()`, so EXIF (including GPS) is stripped from everything frames ever see. Originals keep EXIF but never leave the droplet.
 - Processing is sequential (concurrency 1–2) to bound memory on a small droplet.

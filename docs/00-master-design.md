@@ -193,9 +193,9 @@ Presets store a named filter so a frame can be switched to "Holidays" with one t
 
 On upload (admin only, multipart, up to ~50 MB each, batch allowed):
 
-1. Compute SHA-256; reject duplicates.
+1. Compute SHA-256 of the file as uploaded; reject duplicates.
 2. Read EXIF with `sharp().metadata()` for orientation and `taken_at`; auto-rotate.
-3. Write original to `/var/pictures/orig/<id>.<ext>`.
+3. Write original to `/var/pictures/orig/<id>.<ext>`. HEIC files are kept unchanged and decoded to a temporary JPEG for step 4. Other originals over 8 MB are re-encoded as JPEG at quality 85 with EXIF kept, if that saves at least 10%. Smaller files are stored byte for byte. `pnpm photos:compress` does the same for originals already in the library.
 4. Generate variants as WebP, quality 82, longest edge: **640, 1280, 1920, 2560**. Store at `/var/pictures/v/<id>-<size>.webp`.
 5. Insert `photos` row. Done synchronously for small batches; move to a tiny in-process queue if uploads of 100+ become normal.
 
@@ -300,4 +300,3 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 - Email-the-pairing-link convenience: worth it in Phase 2, or wait and see if typing a 6-char code is annoying enough?
 - Scheduled filters ("Holidays" on weekends, "Everything" otherwise): same row shape as the sleep window; defer until a frame has been on the wall a month.
 - Variant sizes: are any frames going to be portrait? If so, generate variants by longest edge (as planned) and let `contain` handle it — no separate portrait set needed.
-- HEIC uploads from an iPhone: `sharp` needs libheif; the droplet build may need `apt install libheif-dev` or convert on the phone side.

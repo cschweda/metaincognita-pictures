@@ -161,7 +161,7 @@ async function logout() {
         <input
           type="file"
           name="photos"
-          accept="image/jpeg,image/png,image/webp,image/avif,image/tiff"
+          accept="image/jpeg,image/png,image/webp,image/avif,image/tiff,image/heic,image/heif,.heic,.heif"
           multiple
           class="block w-full text-sm font-normal"
           @change="upload"

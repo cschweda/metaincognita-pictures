@@ -35,6 +35,7 @@ pnpm dev              # http://localhost:3100
 | `pnpm hash-password` | Print an argon2id hash for `.env` |
 | `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
 | `pnpm seed:fetch` | Download the 25 sample photos into `seed/photos/` |
+| `pnpm photos:compress` | Report how much large originals would shrink; add `--apply` to replace them, which can't be undone |
 | `pnpm seed:ingest` | Upload those photos through the real route; needs the app running and `PICTURES_PASSWORD` set |
 
 Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and Safari refuses those over plain `http://localhost`.
