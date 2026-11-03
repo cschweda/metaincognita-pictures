@@ -4,7 +4,8 @@
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ confirm?: unknown }>(event)
   if (body?.confirm !== true) throw createError({ statusCode: 400, statusMessage: 'Confirm first' })
-  if (appMode() === 'live') {
+  // The mode is the record, and the photos themselves are a second check.
+  if (appMode() === 'live' || hasOwnerPhotos()) {
     throw createError({ statusCode: 409, statusMessage: 'Your own photos are here. Use Start over to replace everything with the demo' })
   }
   if (demoJob().state === 'loading') return { job: demoJob() }

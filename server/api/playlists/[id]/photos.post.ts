@@ -25,6 +25,9 @@ export default defineEventHandler(async (event) => {
     return fresh.length
   })()
 
-  if (added) pushToPlaylistFrames(id)
+  if (added) {
+    claimPlaylist(id)
+    pushToPlaylistFrames(id)
+  }
   return { added, playlist: listPlaylists().find(playlist => playlist.id === id) }
 })

@@ -12,6 +12,9 @@ export default defineEventHandler(async (event) => {
     return count
   })()
 
-  if (removed) pushToPlaylistFrames(id)
+  if (removed) {
+    claimPlaylist(id)
+    pushToPlaylistFrames(id)
+  }
   return { removed, playlist: listPlaylists().find(playlist => playlist.id === id) }
 })

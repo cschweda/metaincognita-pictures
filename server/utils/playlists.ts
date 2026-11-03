@@ -33,6 +33,11 @@ export function photoIds(value: unknown): string[] {
   return [...new Set(value as string[])]
 }
 
+/** An owner's edit makes a demo playlist theirs, so removing the demo leaves it alone. */
+export function claimPlaylist(playlistId: string): void {
+  db.prepare(`UPDATE playlists SET demo = 0 WHERE id = ? AND demo = 1`).run(playlistId)
+}
+
 /** Frames showing a playlist refetch it when its photos change. */
 export function pushToPlaylistFrames(playlistId: string): void {
   const frames = db.prepare<[string], { id: string }>(`SELECT id FROM devices WHERE playlist_id = ? AND revoked = 0`).all(playlistId)

@@ -44,7 +44,8 @@ sharp.cache(false)
 
 // Photos are processed one at a time, across all requests (Doc 06 §8).
 let queue: Promise<unknown> = Promise.resolve()
-function enqueue<T>(task: () => Promise<T>): Promise<T> {
+/** Runs photo work one task at a time: ingests, Start over, and removing the demo. */
+export function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const result = queue.then(task, task)
   queue = result.catch(() => undefined)
   return result

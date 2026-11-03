@@ -83,6 +83,16 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Fixes from a review of Start over and demo mode:
+  - Start over and removing the demo now wait their turn in the photo queue and stop a demo load in progress, so photos can't reappear after everything was deleted.
+  - The app only returns to demo mode while none of the owner's photos are there.
+  - Removing the demo keeps demo playlists and presets the owner has edited, filled, or put on a frame, and takes deleted tags out of every filter.
+  - Remove the demo photos works on any size of library.
+  - Load demo photos asks first.
+  - The demo download only follows redirects within picsum.photos, checks the type, and caps its size while reading.
+  - An install with frames, playlists, tags, or presets but no photos isn't given the demo.
+  - The grid refreshes only when a demo photo arrives.
+- The admin declares its language, for screen readers.
 - openmantel.com: responsive WebP images (about 340 KB less on a phone), a favicon, a canonical URL, author and dates, Schema.org JSON-LD, `llms.txt`, `robots.txt`, and a sitemap.
 - A correct password on a bulk delete, demo removal, or Start over now clears failed attempts, as login does.
 - The photo grid is now square, cropped tiles with a select circle and a ⋮ on each photo. Caption, date, show on frames, send to a frame, and delete moved into the ⋮ panel, which shrinks the page by more than half.

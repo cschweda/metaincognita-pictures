@@ -56,7 +56,14 @@ async function emptyFolder(path: string) {
  * Deletes everything except admin sessions and backups. Frames fall back to their pairing screen,
  * unless `keepFrames`: a demo reload keeps them paired and sets them back to showing all photos.
  */
-export async function nukeEverything({ keepFrames = false } = {}): Promise<ReturnType<typeof nukeCounts>> {
+export function nukeEverything({ keepFrames = false } = {}): Promise<ReturnType<typeof nukeCounts>> {
+  // A demo load in progress stops at its next photo, and an ingest in progress finishes first,
+  // because this waits its turn in the same queue. Nothing is added back afterwards.
+  cancelDemoLoad()
+  return enqueue(() => emptyLibrary(keepFrames))
+}
+
+async function emptyLibrary(keepFrames: boolean): Promise<ReturnType<typeof nukeCounts>> {
   const before = nukeCounts()
   const devices = db.prepare<[], { id: string }>(`SELECT id FROM devices`).all()
   db.transaction(() => {

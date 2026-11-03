@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
   }
 
   db.transaction(() => renumberPlaylist(id, ids))()
+  claimPlaylist(id)
   pushToPlaylistFrames(id)
   return { ok: true }
 })

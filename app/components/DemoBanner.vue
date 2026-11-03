@@ -19,19 +19,20 @@ let timer: ReturnType<typeof setTimeout> | undefined
 
 async function load() {
   clearTimeout(timer)
-  const previous = status.value?.job.state
+  const previous = status.value?.job
   try {
     status.value = await $fetch<Status>('/api/demo')
   }
   catch {
     return
   }
-  // While the demo loads, check every second, and refresh the library as photos arrive.
-  if (status.value.job.state === 'loading') {
-    libraryVersion.value++
+  // While the demo loads, check again soon, and refresh the library only when a photo has arrived.
+  const job = status.value.job
+  if (job.state === 'loading') {
+    if (job.done !== previous?.done) libraryVersion.value++
     timer = setTimeout(load, 1500)
   }
-  else if (previous === 'loading') {
+  else if (previous?.state === 'loading') {
     libraryVersion.value++
   }
 }
@@ -53,9 +54,15 @@ async function reload() {
   }
 }
 
+/** The count comes from the server. The thumbnails are just a sample of what's going. */
 async function startRemoving() {
-  const { photos } = await $fetch<{ photos: { id: string, demo: number }[] }>('/api/photos', { query: { limit: 200 } })
-  demoIds.value = photos.filter(photo => photo.demo).map(photo => photo.id)
+  try {
+    const { photos } = await $fetch<{ photos: { id: string, demo: number }[] }>('/api/photos', { query: { limit: 200 } })
+    demoIds.value = photos.filter(photo => photo.demo).map(photo => photo.id)
+  }
+  catch {
+    demoIds.value = []
+  }
   removing.value = true
 }
 
@@ -96,7 +103,7 @@ const percent = computed(() => {
         <p class="text-sm text-muted">Add your own photos below, or load {{ status.demo_count }} sample photos to see how it all works first.</p>
         <p v-if="status.job.state === 'failed' && status.job.error" role="alert" class="text-sm text-error">{{ status.job.error }}</p>
       </div>
-      <UButton icon="i-lucide-flask-conical" @click="reload">Load demo photos</UButton>
+      <UButton icon="i-lucide-flask-conical" @click="confirmingReload = true">Load demo photos</UButton>
     </section>
 
     <section v-else-if="status.demo_photos > 0" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-default p-4">
@@ -107,19 +114,21 @@ const percent = computed(() => {
     </section>
 
     <p v-if="error" role="alert" class="text-error">{{ error }}</p>
+    <p v-else-if="status.job.error && status.photos > 0" role="status" class="text-sm text-muted">{{ status.job.error }}</p>
 
-    <UModal v-model:open="confirmingReload" title="Load new demo photos?" description="This replaces everything in the library">
+    <UModal v-model:open="confirmingReload" :title="status.photos ? 'Load new demo photos?' : 'Load demo photos?'" description="This replaces everything in the library">
       <template #body>
-        <p>The {{ status.demo_photos }} demo photos and their playlists, tags, and preset go, and {{ status.demo_count }} new sample photos load in their place. Paired frames stay paired, and switch to showing all photos. You're in demo mode, so none of your own photos are here.</p>
+        <p v-if="status.photos">The {{ status.demo_photos }} demo photos and their playlists, tags, and preset go, and {{ status.demo_count }} new sample photos load in their place. Paired frames stay paired, and switch to showing all photos. You're in demo mode, so none of your own photos are here.</p>
+        <p v-else>{{ status.demo_count }} sample photos load, with tags, playlists, and a preset. Any playlists, tags, or presets already here are replaced. Paired frames stay paired, and switch to showing all photos.</p>
       </template>
       <template #footer>
         <div class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <UButton color="neutral" variant="soft" class="justify-center" autofocus @click="confirmingReload = false">Keep these</UButton>
-          <UButton icon="i-lucide-refresh-cw" class="justify-center" @click="reload">Load new demo photos</UButton>
+          <UButton icon="i-lucide-refresh-cw" class="justify-center" @click="reload">{{ status.photos ? 'Load new demo photos' : 'Load demo photos' }}</UButton>
         </div>
       </template>
     </UModal>
 
-    <BulkDeleteDialog v-model:open="removing" demo :ids="demoIds" @deleted="() => { libraryVersion++; load() }" />
+    <BulkDeleteDialog v-model:open="removing" demo :ids="demoIds" :count="status.demo_photos" @deleted="() => { libraryVersion++; load() }" />
   </div>
 </template>

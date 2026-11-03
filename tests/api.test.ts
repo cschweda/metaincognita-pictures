@@ -893,3 +893,37 @@ test('reloading the demo keeps paired frames, showing all photos', async () => {
   const playlist = await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie: second.cookie } })).json()
   assert.equal(playlist.photos.length, 15)
 })
+
+test('review: Start over during a demo load leaves an empty library, and nothing comes back', async () => {
+  const { token, phrase } = await (await adminJson('/api/nuke/start', 'POST', {})).json()
+  await new Promise(resolve => setTimeout(resolve, 10_500))
+  // The library is in demo mode from the previous test, so a reload is allowed. Start over lands mid-load.
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 200)
+  await new Promise(resolve => setTimeout(resolve, 150))
+  const nuked = await adminJson('/api/nuke/confirm', 'POST', { token, phrase, password: PASSWORD })
+  assert.equal(nuked.status, 200)
+  await new Promise(resolve => setTimeout(resolve, 3000))
+  const status = await (await adminFetch('/api/demo')).json()
+  assert.notEqual(status.job.state, 'loading')
+  assert.equal(status.photos, 0, 'no demo photos reappear after Start over')
+  assert.equal((await (await adminFetch('/api/playlists')).json()).playlists.length, 0)
+})
+
+test('review: a demo playlist the owner has made their own survives removing the demo', async () => {
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 200)
+  await waitForDemo(BASE, admin)
+  const { photo: mine } = await upload('#a01080', 'kept-in-playlist.jpg')
+  const { playlists } = await (await adminFetch('/api/playlists')).json()
+  const kitchen = playlists.find((p: { name: string }) => p.name === 'Kitchen')
+  const living = playlists.find((p: { name: string }) => p.name === 'Living room')
+  await adminJson(`/api/playlists/${kitchen.id}`, 'PATCH', { name: 'Our kitchen' })
+  await adminJson(`/api/playlists/${kitchen.id}/photos`, 'POST', { photo_ids: [mine.id] })
+
+  const { demo_photos: count } = await (await adminFetch('/api/demo')).json()
+  const removed = await adminJson('/api/demo/remove', 'POST', { phrase: `delete ${count} demo photos`, password: PASSWORD })
+  assert.equal(removed.status, 200)
+  const after = (await (await adminFetch('/api/playlists')).json()).playlists
+  assert.deepEqual(after.map((p: { name: string, photos: number }) => [p.name, p.photos]), [['Our kitchen', 1]], 'the edited playlist stays, with the owner photo')
+  assert.ok(!after.some((p: { id: string }) => p.id === living.id), 'the untouched demo playlist goes')
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 409, 'owner photos mean no one-click demo reload')
+})

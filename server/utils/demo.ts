@@ -100,6 +100,19 @@ export interface DemoJob {
 let job: DemoJob = { state: 'idle', done: 0, total: 0, error: null }
 export const demoJob = () => job
 
+// Each load has a generation. Start over and removing the demo move it on, which stops a load in
+// progress at its next photo, so nothing comes back after the library was emptied.
+let generation = 0
+export function cancelDemoLoad(): void {
+  generation++
+  if (job.state === 'loading') job = { ...job, state: 'idle', error: null }
+}
+
+/** True when the library holds any photo the owner added. */
+export function hasOwnerPhotos(): boolean {
+  return Boolean(db.prepare(`SELECT 1 FROM photos WHERE demo = 0 LIMIT 1`).get())
+}
+
 /** A random pick that always includes a few shapes, so frames show what "never crops" means. */
 function pick(count: number) {
   const shuffled = [...POOL].sort(() => Math.random() - 0.5)
@@ -115,14 +128,33 @@ function pick(count: number) {
   return chosen.sort(() => Math.random() - 0.5)
 }
 
-async function download(url: string): Promise<Buffer> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS), redirect: 'follow' })
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  const length = Number(response.headers.get('content-length') ?? 0)
-  if (length > MAX_DOWNLOAD_BYTES) throw new Error('Too large')
-  const body = Buffer.from(await response.arrayBuffer())
-  if (body.length > MAX_DOWNLOAD_BYTES) throw new Error('Too large')
-  return body
+const PICSUM_HOST = /^(?:[a-z0-9-]+\.)?picsum\.photos$/
+
+/**
+ * Fetches an image from Picsum only. Redirects are followed only within picsum.photos (it sends
+ * photos from a CDN subdomain), and the body is read with a byte cap, so a huge or endless
+ * response can't fill memory.
+ */
+async function download(url: string, redirects = 3): Promise<Buffer> {
+  if (!PICSUM_HOST.test(new URL(url).hostname)) throw new Error('Not a Picsum address')
+  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS), redirect: 'manual' })
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location')
+    if (!location || redirects === 0) throw new Error('Bad redirect')
+    return download(new URL(location, url).href, redirects - 1)
+  }
+  if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`)
+  if (!/^image\//.test(response.headers.get('content-type') ?? '')) throw new Error('Not an image')
+  if (Number(response.headers.get('content-length') ?? 0) > MAX_DOWNLOAD_BYTES) throw new Error('Too large')
+
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+    size += chunk.length
+    if (size > MAX_DOWNLOAD_BYTES) throw new Error('Too large')
+    chunks.push(Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks)
 }
 
 /** One photo's bytes: from NUXT_DEMO_SOURCE_DIR in tests, otherwise from Lorem Picsum. */
@@ -146,18 +178,27 @@ function demoPlaylist(name: string, ids: string[]) {
 export function startDemoLoad(): DemoJob {
   if (job.state === 'loading') return job
   const chosen = pick(DEMO_COUNT)
+  const mine = ++generation
   job = { state: 'loading', done: 0, total: chosen.length, error: null }
-  setSetting('mode', 'demo')
+  // Demo mode only while none of the owner's photos are here. An upload that landed in the
+  // meantime has already made the app live, and that stands.
+  db.prepare(
+    `INSERT INTO settings (key, value) SELECT 'mode', 'demo' WHERE NOT EXISTS (SELECT 1 FROM photos WHERE demo = 0)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+  ).run()
+  const cancelled = () => mine !== generation
 
   ;(async () => {
     await ensurePhotoDirs()
     const added: { id: string, tags: string[] }[] = []
     let failures = 0
     for (const item of chosen) {
+      if (cancelled()) return
       const path = picturesPath('tmp', randomUUID())
       try {
         await writeFile(path, await photoBytes(item.id, item.size), { mode: 0o600 })
         const result = await ingestPhoto(path, `demo-${item.id}.jpg`, item.tags, { demo: true, caption: item.caption ?? null })
+        if (cancelled()) return
         if (result.status === 'added') added.push({ id: result.photo.id, tags: item.tags })
       }
       catch (error) {
@@ -170,6 +211,10 @@ export function startDemoLoad(): DemoJob {
       }
     }
 
+    if (cancelled()) return
+    // A demo photo deleted during the load is left out of the playlists.
+    const exists = db.prepare<[string], { id: string }>(`SELECT id FROM photos WHERE id = ?`)
+    added.splice(0, added.length, ...added.filter(photo => exists.get(photo.id)))
     if (added.length === 0) {
       job.state = 'failed'
       job.error = 'Couldn\'t download the demo photos. Check that the server can reach picsum.photos, then try again.'
@@ -195,6 +240,7 @@ export function startDemoLoad(): DemoJob {
     pushToAllFrames('playlist-changed')
     console.log(`[demo] loaded ${added.length} photos`)
   })().catch((error) => {
+    if (cancelled()) return
     job.state = 'failed'
     job.error = 'The demo couldn\'t be loaded.'
     console.error('[demo] load failed', error)
@@ -202,15 +248,29 @@ export function startDemoLoad(): DemoJob {
   return job
 }
 
-/** In live mode, removes what the demo added and leaves the owner's photos alone. */
-export async function removeDemo(): Promise<number> {
-  const photos = db.prepare<[], { id: string }>(`SELECT id FROM photos WHERE demo = 1`).all()
-  for (const photo of photos) await deletePhoto(photo.id)
-  db.transaction(() => {
-    db.prepare(`DELETE FROM playlists WHERE demo = 1`).run()
-    db.prepare(`DELETE FROM presets WHERE demo = 1`).run()
-    db.prepare(`DELETE FROM tags WHERE demo = 1 AND NOT EXISTS (SELECT 1 FROM photo_tags WHERE tag_id = tags.id)`).run()
-  })()
-  pushToAllFrames('playlist-changed')
-  return photos.length
+/**
+ * In live mode, removes what the demo added and leaves the owner's things alone. A demo playlist
+ * or preset the owner has edited, filled with their own photos, or put on a frame is theirs now,
+ * and stays. Tags go only once no photo uses them, and come out of every filter.
+ */
+export function removeDemo(): Promise<number> {
+  cancelDemoLoad()
+  return enqueue(async () => {
+    const photos = db.prepare<[], { id: string }>(`SELECT id FROM photos WHERE demo = 1`).all()
+    for (const photo of photos) await deletePhoto(photo.id)
+    db.transaction(() => {
+      db.prepare(
+        `DELETE FROM playlists WHERE demo = 1
+           AND NOT EXISTS (SELECT 1 FROM playlist_photos WHERE playlist_id = playlists.id)
+           AND NOT EXISTS (SELECT 1 FROM devices WHERE playlist_id = playlists.id AND revoked = 0)`,
+      ).run()
+      db.prepare(`DELETE FROM presets WHERE demo = 1 AND NOT EXISTS (SELECT 1 FROM devices WHERE schedule_preset_id = presets.id)`).run()
+      const unused = db.prepare<[], { id: string }>(
+        `SELECT id FROM tags WHERE demo = 1 AND NOT EXISTS (SELECT 1 FROM photo_tags WHERE tag_id = tags.id)`,
+      ).all().map(row => row.id)
+      deleteTagsAndFilters(unused)
+    })()
+    pushToAllFrames('playlist-changed')
+    return photos.length
+  })
 }

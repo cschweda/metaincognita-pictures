@@ -317,9 +317,9 @@ function bulkDelete() {
     selected.value = []
   })
 }
-async function afterBulkDelete() {
+function afterBulkDelete() {
   selected.value = []
-  await Promise.all([loadPhotos(), loadTags()])
+  libraryVersion.value++ // Refetches the grid, and updates the banner's demo photo count.
 }
 
 async function movePhoto(from: number, to: number) {
@@ -379,8 +379,8 @@ async function upload(event: Event) {
 
   input.value = ''
   progress.value = `${added} added, ${duplicates} already in the library.`
-  await Promise.all([loadPhotos(), loadTags()])
-  libraryVersion.value++ // The first upload of your own switches the app to live, and the banner shows it.
+  // Refetches the grid, tags, and playlists, and lets the banner show that the first upload made the app live.
+  libraryVersion.value++
 }
 
 async function setShown(photo: Photo, shown: boolean) {
@@ -416,6 +416,7 @@ async function remove(photo: Photo) {
   await $fetch(`/api/photos/${photo.id}`, { method: 'DELETE', headers })
   photos.value = photos.value.filter(item => item.id !== photo.id)
   confirming.value = null
+  if (photo.demo) libraryVersion.value++ // The banner's demo photo count.
 }
 
 </script>

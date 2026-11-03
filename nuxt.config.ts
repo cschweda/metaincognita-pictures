@@ -38,6 +38,7 @@ export default defineNuxtConfig({
   devServer: { port: 3100, host: '127.0.0.1' },
   app: {
     head: {
+      htmlAttrs: { lang: 'en' }, // So screen readers use the right voice.
       title: 'OpenMantel',
       meta: [
         { name: 'robots', content: 'noindex' },

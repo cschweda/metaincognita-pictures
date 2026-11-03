@@ -9,10 +9,10 @@ export default defineEventHandler(async (event) => {
   if (body?.name !== undefined) {
     const name = typeof body.name === 'string' ? body.name.trim() : ''
     if (!name || name.length > 60) throw createError({ statusCode: 400, statusMessage: 'Name is required' })
-    db.prepare(`UPDATE presets SET name = ? WHERE id = ?`).run(name, id)
+    db.prepare(`UPDATE presets SET name = ?, demo = 0 WHERE id = ?`).run(name, id) // Edited, so it's the owner's now.
   }
   if (body?.filter !== undefined) {
-    db.prepare(`UPDATE presets SET filter = ? WHERE id = ?`).run(JSON.stringify(validateFilter(body.filter)), id)
+    db.prepare(`UPDATE presets SET filter = ?, demo = 0 WHERE id = ?`).run(JSON.stringify(validateFilter(body.filter)), id)
   }
 
   const preset = db.prepare<[string], Preset>(`SELECT * FROM presets WHERE id = ?`).get(id)
