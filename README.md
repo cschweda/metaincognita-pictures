@@ -76,7 +76,7 @@ Log in with Chrome or Firefox in dev. The session cookie is always `Secure`, and
 | `pnpm photos:compress` | Report how much large originals would shrink; add `--apply` to replace them, which can't be undone |
 | `pnpm photos:rebuild` | Rebuild missing frame images from the originals; add `--all` to rebuild every one |
 | `pnpm seed:fetch` | Download 50 sample photos into `seed/photos/` |
-| `pnpm seed:ingest` | Upload those photos; needs the app running and `PICTURES_PASSWORD` set |
+| `pnpm seed:ingest` | Upload those photos; needs the app running and `OPENMANTEL_PASSWORD` set |
 | `pnpm seed:device` | Add a device named `test` and print its token; add `--remove` to delete it |
 
 The design is in [docs/00-master-design.md](docs/00-master-design.md), and the threat model is in [docs/06-security.md](docs/06-security.md).

@@ -2,7 +2,7 @@
 #
 # Turns a Mac into a frame. Run it once while logged in. The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | FRAME_URL=https://pictures.example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-mac.sh | FRAME_URL=https://photos.example.com bash
 #
 # To stop the frame later:
 #
@@ -17,15 +17,27 @@
 set -Eeuo pipefail
 
 FRAME_URL="${FRAME_URL:-}"
-LABEL=com.metaincognita.pictures-frame
+LABEL=com.openmantel.frame
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-PROFILE="$HOME/Library/Application Support/pictures-frame"
+PROFILE="$HOME/Library/Application Support/openmantel-frame"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 DOMAIN="gui/$(id -u)"
 SLEEP_LABEL=$LABEL.display-off
 WAKE_LABEL=$LABEL.display-on
 SLEEP_PLIST="$HOME/Library/LaunchAgents/$SLEEP_LABEL.plist"
 WAKE_PLIST="$HOME/Library/LaunchAgents/$WAKE_LABEL.plist"
+
+# Names used before the OpenMantel rename.
+OLD_LABEL=com.metaincognita.pictures-frame
+OLD_PROFILE="$HOME/Library/Application Support/pictures-frame"
+
+# Stops and deletes the agents an install from before the rename left behind.
+remove_old_agents() {
+  for label in "$OLD_LABEL" "$OLD_LABEL.display-off" "$OLD_LABEL.display-on"; do
+    launchctl bootout "$DOMAIN/$label" 2>/dev/null || true
+    rm -f "$HOME/Library/LaunchAgents/$label.plist"
+  done
+}
 
 # Writes a LaunchAgent that runs one command at HH:MM every day.
 daily_agent() {
@@ -62,6 +74,7 @@ if [[ "${1:-}" == "--remove" ]]; then
     launchctl bootout "$DOMAIN/$label" 2>/dev/null || true
   done
   rm -f "$PLIST" "$SLEEP_PLIST" "$WAKE_PLIST"
+  remove_old_agents
   echo "Frame removed. Its profile is still at $PROFILE."
   exit 0
 fi
@@ -76,6 +89,11 @@ if [[ ! -x "$CHROME" ]]; then
   exit 1
 fi
 
+remove_old_agents
+# The old profile holds the pairing, so keep it rather than pairing again.
+if [[ -d "$OLD_PROFILE" && ! -e "$PROFILE" ]]; then
+  mv "$OLD_PROFILE" "$PROFILE"
+fi
 mkdir -p "$(dirname "$PLIST")" "$PROFILE"
 
 # caffeinate keeps the display and the Mac awake for as long as Chrome runs.

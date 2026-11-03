@@ -56,7 +56,7 @@ module.exports = {
 }
 ```
 
-Deploy with `./rebuild.sh`, the only deploy path. It builds into `.output.new` and swaps it into `.output` only after the build succeeds, so a failed build leaves the running site alone. This needs `nitro.output.dir` in `nuxt.config.ts` to read `BUILD_OUTPUT_DIR`, defaulting to `.output`. Nginx proxies `pictures.example.com` → `127.0.0.1:3100` with `proxy_buffering off` on the `/api/frame/events` location so SSE streams through.
+Deploy with `./rebuild.sh`, the only deploy path. It builds into `.output.new` and swaps it into `.output` only after the build succeeds, so a failed build leaves the running site alone. This needs `nitro.output.dir` in `nuxt.config.ts` to read `BUILD_OUTPUT_DIR`, defaulting to `.output`. Nginx proxies `photos.example.com` → `127.0.0.1:3100` with `proxy_buffering off` on the `/api/frame/events` location so SSE streams through.
 
 Nginx sets `proxy_set_header X-Real-IP $remote_addr` on every proxied location, overwriting anything the client sent. The app takes the client IP from that header only, falling back to the socket address in dev. Without this every request appears to come from `127.0.0.1`, which breaks the per-IP rate limit and the IP shown on the pairing screen.
 
@@ -288,7 +288,7 @@ The kitchen frame is a Mac mini, set up with `scripts/setup-frame-mac.sh`: Chrom
 ```
 chromium --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 --autoplay-policy=no-user-gesture-required \
-  https://pictures.example.com &
+  https://photos.example.com &
 ```
 Plus: disable screen blanking in `raspi-config`, hide cursor (`unclutter` or labwc's cursor timeout), and wrap the launch in a systemd user service with `Restart=always` so a browser crash doesn't leave a black screen.
 

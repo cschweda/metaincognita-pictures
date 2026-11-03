@@ -3,14 +3,15 @@
 # Turns a Raspberry Pi (Pi OS Bookworm or Trixie, Wayland/labwc) into a frame.
 # Run it once on the Pi, then reboot. The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-pi.sh | FRAME_URL=https://pictures.example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-pi.sh | FRAME_URL=https://photos.example.com bash
 #
 # FRAME_URL is the address of your OpenMantel server.
 #
 set -Eeuo pipefail
 
 : "${FRAME_URL:?Set FRAME_URL to the address of your OpenMantel server}"
-SERVICE=pictures-frame.service
+SERVICE=openmantel-frame.service
+OLD_SERVICE=pictures-frame.service
 SERVICE_DIR="$HOME/.config/systemd/user"
 AUTOSTART="$HOME/.config/labwc/autostart"
 
@@ -23,10 +24,15 @@ fi
 
 mkdir -p "$SERVICE_DIR" "$(dirname "$AUTOSTART")"
 
+# Remove the service an install from before the OpenMantel rename left behind.
+systemctl --user stop "$OLD_SERVICE" 2>/dev/null || true
+rm -f "$SERVICE_DIR/$OLD_SERVICE"
+[[ -f "$AUTOSTART" ]] && sed -i "/$OLD_SERVICE/d" "$AUTOSTART"
+
 # Restart=always, so a browser crash can't leave a black screen.
 cat > "$SERVICE_DIR/$SERVICE" <<UNIT
 [Unit]
-Description=pictures frame
+Description=OpenMantel frame
 After=graphical-session.target
 
 [Service]

@@ -1,13 +1,14 @@
 // Pushes seed/photos/ through the real upload route, with the tags from seed/manifest.json.
-// Needs the app running. Set PICTURES_PASSWORD, and SEED_URL if it isn't on localhost:3100.
+// Needs the app running. Set OPENMANTEL_PASSWORD, and SEED_URL if it isn't on localhost:3100.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const base = process.env.SEED_URL ?? 'http://localhost:3100'
-const password = process.env.PICTURES_PASSWORD
-const session = process.env.PICTURES_SESSION
+// PICTURES_PASSWORD and PICTURES_SESSION are the names from before the OpenMantel rename.
+const password = process.env.OPENMANTEL_PASSWORD ?? process.env.PICTURES_PASSWORD
+const session = process.env.OPENMANTEL_SESSION ?? process.env.PICTURES_SESSION
 if (!password && !session) {
-  console.error('Set PICTURES_PASSWORD to the admin password, or PICTURES_SESSION to a session id.')
+  console.error('Set OPENMANTEL_PASSWORD to the admin password, or OPENMANTEL_SESSION to a session id.')
   process.exit(1)
 }
 

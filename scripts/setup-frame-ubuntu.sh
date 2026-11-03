@@ -3,15 +3,15 @@
 # Turns an Ubuntu desktop (GNOME) into a frame. Run it once, then log in again or reboot.
 # The screen shows a pairing code.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-ubuntu.sh | FRAME_URL=https://pictures.example.com bash
+#   curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-ubuntu.sh | FRAME_URL=https://photos.example.com bash
 #
 # FRAME_URL is the address of your OpenMantel server.
 #
 set -Eeuo pipefail
 
 : "${FRAME_URL:?Set FRAME_URL to the address of your OpenMantel server}"
-BIN="$HOME/.local/bin/pictures-frame"
-AUTOSTART="$HOME/.config/autostart/pictures-frame.desktop"
+BIN="$HOME/.local/bin/openmantel-frame"
+AUTOSTART="$HOME/.config/autostart/openmantel-frame.desktop"
 
 BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
 if [[ -z "$BROWSER" ]]; then
@@ -20,6 +20,10 @@ if [[ -z "$BROWSER" ]]; then
 fi
 
 mkdir -p "$(dirname "$BIN")" "$(dirname "$AUTOSTART")"
+
+# Remove what an install from before the OpenMantel rename left behind.
+pkill -f "$HOME/.local/bin/pictures-frame" 2>/dev/null || true
+rm -f "$HOME/.local/bin/pictures-frame" "$HOME/.config/autostart/pictures-frame.desktop"
 
 # The loop restarts the browser after a crash, so the screen can't stay black.
 cat > "$BIN" <<SCRIPT
@@ -35,7 +39,7 @@ chmod +x "$BIN"
 cat > "$AUTOSTART" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=pictures frame
+Name=OpenMantel frame
 Exec=$BIN
 X-GNOME-Autostart-enabled=true
 DESKTOP

@@ -1,7 +1,7 @@
 # Turns a Windows PC into a frame. Run it once in PowerShell, then sign out or restart.
 # The screen shows a pairing code.
 #
-#   $env:FRAME_URL = 'https://pictures.example.com'
+#   $env:FRAME_URL = 'https://photos.example.com'
 #   irm https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/setup-frame-windows.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
@@ -22,7 +22,7 @@ $arguments = "--kiosk $url --noerrdialogs --disable-infobars --disable-session-c
 if ($browser -like '*msedge.exe') { $arguments += ' --edge-kiosk-type=fullscreen' }
 
 # The loop restarts the browser after a crash, so the screen can't stay black.
-$frameDir = Join-Path $env:LocalAppData 'pictures-frame'
+$frameDir = Join-Path $env:LocalAppData 'openmantel-frame'
 New-Item -ItemType Directory -Force -Path $frameDir | Out-Null
 $launcher = Join-Path $frameDir 'frame.ps1'
 @"
@@ -33,8 +33,11 @@ while (`$true) {
 "@ | Set-Content -Path $launcher -Encoding UTF8
 
 $startup = [Environment]::GetFolderPath('Startup')
+# Remove what an install from before the OpenMantel rename left behind.
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $startup 'pictures frame.lnk')
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $env:LocalAppData 'pictures-frame')
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut((Join-Path $startup 'pictures frame.lnk'))
+$shortcut = $shell.CreateShortcut((Join-Path $startup 'OpenMantel frame.lnk'))
 $shortcut.TargetPath = 'powershell.exe'
 $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcher`""
 $shortcut.Save()

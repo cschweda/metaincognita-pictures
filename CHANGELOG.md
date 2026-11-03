@@ -68,6 +68,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Frame setup scripts use OpenMantel names for their launch agents, services, and shortcuts, and clean up installs made under the old names. A Mac frame keeps its pairing.
+- `pnpm seed:ingest` reads `OPENMANTEL_PASSWORD` and `OPENMANTEL_SESSION`. The old `PICTURES_` names still work.
 - The prebuilt image builds each architecture on its own native runner, with a 30-minute limit, and is also tagged with the commit. Emulated arm64 builds were hanging, so `latest` had stopped updating.
 - Dependabot no longer proposes TypeScript or Node major versions; those move by hand.
 - Tested 48-megapixel HEIC uploads: about 27 seconds on a 1 GB server, with no app restart.

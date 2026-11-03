@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Nightly backup: a SQLite snapshot on this server, and an off-site copy once one is set up.
-# Set BACKUP_REMOTE in .env to an rclone remote, for example spaces:my-bucket/pictures, to enable
+# Set BACKUP_REMOTE in .env to an rclone remote, for example spaces:my-bucket/openmantel, to enable
 # the off-site copy of the database and originals. Variants can be regenerated, so they're skipped.
 #
 set -Eeuo pipefail

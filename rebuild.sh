@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# rebuild.sh — pull, build, and restart pictures under pm2, for installs without Docker
+# rebuild.sh — pull, build, and restart OpenMantel under pm2, for installs without Docker
 #
 # Usage (on the server):
-#   cd /path/to/pictures && ./rebuild.sh
+#   cd /path/to/openmantel && ./rebuild.sh
 #
 # Env overrides:
 #   SMOKE_URL        default PUBLIC_URL from .env, then http://127.0.0.1:3100
@@ -13,6 +13,7 @@
 set -Eeuo pipefail
 
 # ---------------------------------------------------------------- config ----
+# The pm2 name, which must match ecosystem.config.cjs. Renaming it means deleting the old pm2 app.
 APP_NAME="pictures"
 BRANCH="main"
 SMOKE_URL="${SMOKE_URL:-}"
