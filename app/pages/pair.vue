@@ -57,5 +57,9 @@ onBeforeUnmount(() => clearTimeout(timer))
       <p class="text-[3vmin] text-white/70">Log in on your phone and choose Pair a frame.</p>
     </template>
     <p v-else class="text-[4vmin] text-white/70">Getting a code…</p>
+    <!-- Plain text on purpose: a frame often runs as a kiosk with no back button, so a tapped link would strand it. -->
+    <p class="absolute inset-x-0 bottom-[3vmin] text-[1.8vmin] text-white/40">
+      OpenMantel, a free, open source picture frame · github.com/cschweda/openmantel
+    </p>
   </main>
 </template>

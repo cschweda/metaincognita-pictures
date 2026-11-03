@@ -103,7 +103,7 @@ after(() => {
 
 test('public routes answer without a login', async () => {
   assert.deepEqual(await (await fetch(`${BASE}/api/health`)).json(), { ok: true, db: true })
-  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`)).json(), { admin: false })
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`)).json(), { admin: false, device: false })
 })
 
 test('every other api route is denied by default', async () => {
@@ -131,9 +131,9 @@ test('admin writes need the CSRF header', async () => {
 test('logout ends a session', async () => {
   const login = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) })
   const cookie = cookieFrom(login)
-  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie } })).json(), { admin: true })
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie } })).json(), { admin: true, device: false })
   await fetch(`${BASE}/api/auth/logout`, { method: 'POST', headers: { ...CSRF, cookie } })
-  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie } })).json(), { admin: false })
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie } })).json(), { admin: false, device: false })
 })
 
 test('uploads add photos, skip duplicates, and reject non-images', async () => {
@@ -926,4 +926,53 @@ test('review: a demo playlist the owner has made their own survives removing the
   assert.deepEqual(after.map((p: { name: string, photos: number }) => [p.name, p.photos]), [['Our kitchen', 1]], 'the edited playlist stays, with the owner photo')
   assert.ok(!after.some((p: { id: string }) => p.id === living.id), 'the untouched demo playlist goes')
   assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 409, 'owner photos mean no one-click demo reload')
+})
+
+test('new frames show each photo for a minute, and a tap shows safe details for the photo', async () => {
+  const image = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#335577' } })
+    .jpeg()
+    .withExif({ IFD0: { Make: 'FrameCam', Model: 'Z9' } })
+    .toBuffer()
+  const form = new FormData()
+  form.append('tags', 'tapped')
+  form.append('photo', new Blob([new Uint8Array(image)], { type: 'image/jpeg' }), 'tap.jpg')
+  const { results } = await (await adminFetch('/api/photos', { method: 'POST', headers: CSRF, body: form })).json()
+  const id = results[0].photo.id
+  await adminJson(`/api/photos/${id}`, 'PATCH', { caption: 'On the porch' })
+
+  const { cookie } = await pairDevice('Tap frame')
+  assert.equal((await (await fetch(`${BASE}/api/frame/config`, { headers: { cookie } })).json()).interval_sec, 60)
+
+  const details = await (await fetch(`${BASE}/api/frame/photo/${id}`, { headers: { cookie } })).json()
+  assert.equal(details.caption, 'On the porch')
+  assert.equal(details.camera.make, 'FrameCam')
+  assert.deepEqual(details.tags, ['tapped'])
+  assert.ok(!('location' in details) && !('filename' in details) && !('hash' in details), 'a frame gets no location, file name, or fingerprint')
+
+  assert.equal((await fetch(`${BASE}/api/frame/photo/${id}`)).status, 401)
+  assert.equal((await adminFetch(`/api/frame/photo/${id}`)).status, 200, 'the admin slideshow can show details too')
+  await adminJson(`/api/photos/${id}`, 'PATCH', { hidden: true })
+  assert.equal((await fetch(`${BASE}/api/frame/photo/${id}`, { headers: { cookie } })).status, 404, 'not for a hidden photo')
+})
+
+test('five wrong passwords lock that address out for five minutes, and only that address', async () => {
+  const from = (ip: string, password: string) => fetch(`${BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { ...JSON_BODY, 'X-Real-IP': ip },
+    body: JSON.stringify({ password }),
+  })
+  const messages = []
+  for (let i = 0; i < 4; i++) {
+    const response = await from('198.51.100.7', 'wrong-password')
+    assert.equal(response.status, 401)
+    messages.push((await response.json()).message ?? '')
+  }
+  assert.match(messages[0], /4 tries left/)
+  assert.match(messages[3], /1 try left/)
+
+  const fifth = await from('198.51.100.7', 'wrong-password')
+  assert.equal(fifth.status, 429)
+  assert.ok(Number(fifth.headers.get('retry-after')) > 290, 'locked for about five minutes')
+  assert.equal((await from('198.51.100.7', PASSWORD)).status, 429, 'even the right password waits out the lockout')
+  assert.equal((await from('198.51.100.8', PASSWORD)).status, 200, 'other addresses can still log in')
 })

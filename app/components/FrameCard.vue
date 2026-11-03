@@ -11,11 +11,20 @@ const MATTES = [
 ]
 const INTERVALS = [
   { label: '10 seconds', value: 10 },
+  { label: '15 seconds', value: 15 },
   { label: '30 seconds', value: 30 },
+  { label: '45 seconds', value: 45 },
   { label: '1 minute', value: 60 },
+  { label: '2 minutes', value: 120 },
   { label: '5 minutes', value: 300 },
+  { label: '10 minutes', value: 600 },
   { label: '30 minutes', value: 1800 },
+  { label: '1 hour', value: 3600 },
 ]
+/** Any value set elsewhere, such as through the API, still shows in the list. */
+const intervalItems = computed(() => INTERVALS.some(item => item.value === props.frame.interval_sec)
+  ? INTERVALS
+  : [...INTERVALS, { label: `${props.frame.interval_sec} seconds`, value: props.frame.interval_sec }].sort((a, b) => a.value - b.value))
 
 const DAYS = [
   { short: 'S', name: 'Sunday' },
@@ -278,6 +287,19 @@ function toggleDay(day: number) {
     </div>
 
     <div class="flex flex-col gap-2">
+      <h3 class="text-xl font-bold">Timing</h3>
+      <UFormField label="Show each photo for" help="A minute gives time to take a photo in. Tap the frame to pause on one and see its details.">
+        <USelect
+          :model-value="frame.interval_sec"
+          :items="intervalItems"
+          size="lg"
+          class="w-full sm:w-64"
+          @update:model-value="save({ interval_sec: Number($event) })"
+        />
+      </UFormField>
+    </div>
+
+    <div class="flex flex-col gap-2">
       <h3 class="text-xl font-bold">Matte</h3>
       <p class="-mt-1 text-sm text-muted">The colour around each photo, on screens whose shape doesn't match it.</p>
       <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Matte color">
@@ -338,14 +360,6 @@ function toggleDay(day: number) {
         <UInput :model-value="frame.name" :name="`name-${frame.id}`" maxlength="60" class="w-full" @change="rename" />
       </UFormField>
       <div class="grid grid-cols-2 gap-3">
-        <UFormField label="Change photo every">
-          <USelect
-            :model-value="frame.interval_sec"
-            :items="INTERVALS"
-            class="w-full"
-            @update:model-value="save({ interval_sec: Number($event) })"
-          />
-        </UFormField>
         <UFormField label="Order">
           <USelect
             :model-value="frame.sort"

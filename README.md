@@ -14,6 +14,7 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 - **Pairs like a TV streaming stick.** A new frame shows a code. Enter it on your phone and the frame is set up for good, with no keyboard and no password on the frame.
 - **Works as a remote.** From your phone, start a slideshow on every frame or just one, leaving the others as they are. Skip, go back, pause, or send any photo to a frame. Change what a frame shows, its matte color, timing, captions, and sleep hours, or schedule a preset for certain days and times. Frames update immediately. Add the admin to your home screen and it opens like an app.
 - **Never crops.** Portrait, square, and panoramic photos always show in full, on a matte or a blurred backdrop, with optional captions.
+- **Tells you about a photo.** Tap or click a frame to see the photo's caption, date, and camera settings, and to hold it on screen. Each frame sets how long a photo stays up, a minute by default.
 - **Plays forever, in your choice of order.** Slideshows start again after the last photo. In random order, each pass is reshuffled. In sequence, they follow the order you arranged, or the playlist's order.
 - **Organizes by tag.** Upload in batches, tag photos, save presets such as "Holidays", and search by file name or caption. Arrange photos by dragging, or on a phone by tapping a photo and then tapping where it goes.
 - **Builds playlists.** Drag photos from your library into a playlist such as "Kitchen", in the order you want. Give each frame its own playlist, or share one between frames. A playlist isn't tied to a frame, so it survives moving a frame to another room.
@@ -41,7 +42,7 @@ All screenshots use the sample photos from `pnpm seed:fetch`, with two demo fram
 
 ![The photo details panel: a preview, a Show on frames switch, caption and date fields, Show on a frame now and Delete buttons, then the photo's details](docs/screenshots/photo-details.webp)
 
-**Frames.** Each frame on its own card: what it's showing now, a remote, and what it shows (tags, a preset, or a playlist), plus its matte, backdrop, captions, timing, sleep hours, and schedule. **Deactivate** retires it, and it has to be paired again.
+**Frames.** Each frame on its own card: what it's showing now, a remote, what it shows (tags, a preset, or a playlist), how long each photo stays up (a minute by default), and its matte, backdrop, captions, sleep hours, and schedule. **Deactivate** retires it, and it has to be paired again.
 
 ![The Frames page: cards for Kitchen, showing a playlist, and Living room, showing photos tagged landscape, each with a remote, matte colours, and display options](docs/screenshots/frames.webp)
 
@@ -56,6 +57,10 @@ All screenshots use the sample photos from `pnpm seed:fetch`, with two demo fram
 **On the wall.** A panorama in full on a 16:9 screen, with a blurred copy of the photo filling the bars and its caption.
 
 ![A frame showing a lake panorama in full, with blurred bars above and below and the caption Evening at the reservoir](docs/screenshots/frame.webp)
+
+**Tap the frame.** A tap or click shows the photo's caption, date, camera settings, size, and tags, and holds the slideshow on it. Tap again to carry on. A frame never shows where a photo was taken.
+
+![The same frame with a details panel in the corner: the caption, the photo's size, and its tags](docs/screenshots/frame-details.webp)
 
 **On your phone.** The same admin, built for a phone first. Add it to your home screen and it opens like an app.
 

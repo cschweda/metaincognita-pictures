@@ -1,15 +1,7 @@
-// In-memory login limiter (Doc 06 §4). One process, so a Map is enough.
-// Past a limit, attempts must be spaced by an exponentially growing delay, capped so
-// the owner can never be locked out for long.
-
-const WINDOWS = {
-  ip: { limit: 5, ms: 15 * 60_000 },
-  global: { limit: 20, ms: 60 * 60_000 },
-}
-const MAX_DELAY_MS = 5 * 60_000
-const GLOBAL_KEY = '*'
-
-const attempts = new Map<string, number[]>()
+// In-memory login lockout (Doc 06 §4). One process, so Maps are enough.
+// Five wrong passwords from one address lock that address out for five minutes. Only that address:
+// locking the whole login would let anyone keep the owner out with one bad guess a minute. As a
+// backstop, 20 wrong passwords in an hour from anywhere lock the login for five minutes.
 
 /**
  * The key a client is limited by. One IPv6 host can use any address in its /64 (2^64 of them),
@@ -25,40 +17,49 @@ export function ipBucket(ip: string): string {
   return `${groups.slice(0, 4).map(group => group.replace(/^0+(?=.)/, '')).join(':')}::/64`
 }
 
-function recent(key: string, windowMs: number, now: number): number[] {
-  const kept = (attempts.get(key) ?? []).filter(time => now - time < windowMs)
-  if (kept.length > 0) attempts.set(key, kept)
-  else attempts.delete(key)
-  return kept
+export const LOCK_AFTER_FAILURES = 5
+export const LOCKOUT_MS = 5 * 60_000
+const FORGET_AFTER_MS = 15 * 60_000 // Wrong guesses this old no longer count toward a lockout.
+const GLOBAL = { limit: 20, ms: 60 * 60_000 }
+
+const failures = new Map<string, { count: number, last: number, lockedUntil: number }>()
+let globalFailures: number[] = []
+let globalLockedUntil = 0
+
+/** Milliseconds until this address may try a password again, or 0. */
+export function loginLockout(key: string, now = Date.now()): number {
+  const entry = failures.get(key)
+  const own = entry && entry.lockedUntil > now ? entry.lockedUntil - now : 0
+  const everyone = globalLockedUntil > now ? globalLockedUntil - now : 0
+  return Math.max(own, everyone)
 }
 
-function waitFor(times: number[], limit: number, now: number): number {
-  const over = times.length - limit
-  if (over < 0) return 0
-  const delay = Math.min(1000 * 2 ** over, MAX_DELAY_MS)
-  return Math.max(0, (times.at(-1) ?? 0) + delay - now)
+/** Records a wrong password. Returns the tries left before a lockout, and the lockout if it started. */
+export function recordLoginFailure(key: string, now = Date.now()): { triesLeft: number, lockedMs: number } {
+  const entry = failures.get(key)
+  const count = entry && now - entry.last < FORGET_AFTER_MS && entry.lockedUntil <= now ? entry.count + 1 : 1
+  const locked = count >= LOCK_AFTER_FAILURES
+  failures.set(key, { count: locked ? 0 : count, last: now, lockedUntil: locked ? now + LOCKOUT_MS : 0 })
+
+  globalFailures = [...globalFailures.filter(time => now - time < GLOBAL.ms), now]
+  if (globalFailures.length >= GLOBAL.limit) {
+    globalLockedUntil = now + LOCKOUT_MS
+    globalFailures = []
+  }
+  if (failures.size > MAX_KEYS) trim(now)
+  return { triesLeft: locked ? 0 : LOCK_AFTER_FAILURES - count, lockedMs: loginLockout(key, now) }
 }
 
-/** Records an attempt, or returns the milliseconds the caller must still wait. */
-export function takeLoginAttempt(ip: string, now = Date.now()): number {
-  const byIp = recent(ip, WINDOWS.ip.ms, now)
-  const all = recent(GLOBAL_KEY, WINDOWS.global.ms, now)
-  const wait = Math.max(
-    waitFor(byIp, WINDOWS.ip.limit, now),
-    waitFor(all, WINDOWS.global.limit, now),
-  )
-  if (wait > 0) return wait
-
-  attempts.set(ip, [...byIp, now])
-  attempts.set(GLOBAL_KEY, [...all, now])
-  if (attempts.size > MAX_KEYS) trim(attempts, now)
-  return 0
+/** After a correct password, this address starts again with five tries. */
+export function clearLoginAttempts(key: string): void {
+  failures.delete(key)
 }
 
-/** After a successful login, forgets this IP's attempts and its one successful attempt globally. */
-export function clearLoginAttempts(ip: string): void {
-  attempts.delete(ip)
-  attempts.get(GLOBAL_KEY)?.pop()
+/** The message for a locked-out caller, with the time left in whole minutes or seconds. */
+export function lockoutMessage(ms: number): string {
+  const seconds = Math.ceil(ms / 1000)
+  const wait = seconds > 60 ? `${Math.ceil(seconds / 60)} minutes` : `${seconds} seconds`
+  return `Too many wrong passwords. Try again in ${wait}.`
 }
 
 const hits = new Map<string, number[]>()
@@ -68,20 +69,31 @@ const hits = new Map<string, number[]>()
 const LONGEST_WINDOW_MS = 60 * 60_000
 const MAX_KEYS = 50_000
 
-function trim(map: Map<string, number[]>, now: number) {
-  for (const [key, times] of map) {
-    if (key !== GLOBAL_KEY && now - (times.at(-1) ?? 0) > LONGEST_WINDOW_MS) map.delete(key)
+function trimHits(now: number) {
+  for (const [key, times] of hits) {
+    if (now - (times.at(-1) ?? 0) > LONGEST_WINDOW_MS) hits.delete(key)
   }
-  for (const key of map.keys()) {
-    if (map.size <= MAX_KEYS) break
-    if (key !== GLOBAL_KEY) map.delete(key)
+  for (const key of hits.keys()) {
+    if (hits.size <= MAX_KEYS) break
+    hits.delete(key)
+  }
+}
+
+/** Forgets addresses that are neither locked nor recently wrong, then caps the map, oldest first. */
+function trim(now: number) {
+  for (const [key, entry] of failures) {
+    if (entry.lockedUntil <= now && now - entry.last > FORGET_AFTER_MS) failures.delete(key)
+  }
+  for (const key of failures.keys()) {
+    if (failures.size <= MAX_KEYS) break
+    failures.delete(key)
   }
 }
 
 /** Run every minute by the sweep plugin. */
 export function sweepRateLimits(now = Date.now()): void {
-  trim(attempts, now)
-  trim(hits, now)
+  trim(now)
+  trimHits(now)
 }
 
 /** A plain sliding window, for routes that just refuse once over the limit. */
@@ -91,6 +103,6 @@ export function allowRequest(key: string, limit: number, windowMs: number, now =
   if (allowed) kept.push(now)
   if (kept.length > 0) hits.set(key, kept)
   else hits.delete(key)
-  if (hits.size > MAX_KEYS) trim(hits, now)
+  if (hits.size > MAX_KEYS) trimHits(now)
   return allowed
 }

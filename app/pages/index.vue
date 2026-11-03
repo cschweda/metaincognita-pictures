@@ -30,7 +30,22 @@ const SKIP_MS = 250
 const PREFETCH_COUNT = 20
 const RELOAD_MS = 6 * 60 * 60 * 1000 // Chromium memory hygiene.
 
+interface PhotoInfo {
+  caption: string | null
+  taken_at: string | null
+  width: number
+  height: number
+  tags: string[]
+  camera: { make: string | null, model: string | null, lens: string | null, exposure: string | null, aperture: string | null, iso: number | null, focal_length: string | null } | null
+}
+
 const config = ref<Config | null>(null)
+// Tapping or clicking the photo opens its details, and holds the slideshow on it until closed.
+const INFO_TIMEOUT_MS = 2 * 60 * 1000
+const infoOpen = ref(false)
+const info = ref<PhotoInfo | null>(null)
+let infoTimer: ReturnType<typeof setTimeout> | undefined
+let heldForInfo = false
 const slides = reactive<[Slide, Slide]>([
   { src: '', backdrop: '', caption: null, id: '' },
   { src: '', backdrop: '', caption: null, id: '' },
@@ -131,6 +146,12 @@ async function display(entry: Entry, since = epoch) {
   if (since !== epoch) throw new Superseded()
 
   const hidden = 1 - active.value
+  // A new photo closes the details of the last one. Whatever changed the photo schedules the next.
+  if (infoOpen.value) {
+    infoOpen.value = false
+    heldForInfo = false
+    clearTimeout(infoTimer)
+  }
   slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
   const firstSlide = !slides[1 - hidden]?.id
   active.value = hidden
@@ -202,8 +223,10 @@ async function loadConfig() {
   config.value = await $fetch<Config>('/api/frame/config')
 }
 
+let leaving = false
 function goToPairing(error: unknown) {
   if ((error as { statusCode?: number }).statusCode !== 401) return false
+  leaving = true
   navigateTo('/pair')
   return true
 }
@@ -289,6 +312,50 @@ function listen() {
   }
 }
 
+async function toggleInfo() {
+  if (infoOpen.value) return closeInfo()
+  const id = slides[active.value]?.id
+  if (!id || sleeping.value) return
+  infoOpen.value = true
+  info.value = null
+  if (!paused) {
+    clearTimeout(timer)
+    heldForInfo = true
+  }
+  clearTimeout(infoTimer)
+  infoTimer = setTimeout(closeInfo, INFO_TIMEOUT_MS) // Nobody's reading it any more, so carry on.
+  try {
+    info.value = await $fetch<PhotoInfo>(`/api/frame/photo/${id}`)
+  }
+  catch {
+    // Offline or removed: the panel shows what the frame already knows.
+  }
+}
+
+function closeInfo() {
+  clearTimeout(infoTimer)
+  infoOpen.value = false
+  if (heldForInfo) {
+    heldForInfo = false
+    if (!paused) schedule((config.value?.interval_sec ?? 60) * 1000)
+  }
+}
+
+const infoRows = computed(() => {
+  const i = info.value
+  if (!i) return []
+  const c = i.camera
+  const taken = i.taken_at ? new Date(i.taken_at.includes('T') ? i.taken_at : `${i.taken_at.replace(' ', 'T')}Z`) : null
+  return [
+    { label: 'Taken', value: taken && !Number.isNaN(taken.getTime()) ? taken.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null },
+    { label: 'Camera', value: c ? [c.make, c.model].filter(Boolean).join(' ') || null : null },
+    { label: 'Lens', value: c?.lens ?? null },
+    { label: 'Settings', value: c ? [c.exposure, c.aperture, c.iso ? `ISO ${c.iso}` : null, c.focal_length].filter(Boolean).join(' · ') || null : null },
+    { label: 'Size', value: `${i.width} × ${i.height}, ${((i.width * i.height) / 1_000_000).toFixed(1)} MP` },
+    { label: 'Tags', value: i.tags.join(', ') || null },
+  ].filter(row => row.value)
+})
+
 function exitPreview() {
   if (!config.value?.preview) return
   if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined)
@@ -304,7 +371,9 @@ function step(direction: 1 | -1) {
 }
 
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') exitPreview()
+  if (event.key === 'Escape' && infoOpen.value) closeInfo()
+  else if (event.key === 'Escape') exitPreview()
+  else if (event.key === 'i' || event.key === 'Enter' || event.key === ' ') toggleInfo()
   else if (event.key === 'ArrowRight') step(1)
   else if (event.key === 'ArrowLeft') step(-1)
 }
@@ -323,7 +392,11 @@ async function startCache() {
 }
 
 onMounted(async () => {
+  // An unpaired screen goes straight to pairing, before asking for settings it would be refused.
+  const who = await $fetch<{ admin: boolean, device: boolean }>('/api/auth/session').catch(() => null)
+  if (who && !who.admin && !who.device) return navigateTo('/pair')
   await start()
+  if (leaving) return // Revoked or never paired: off to the pairing screen.
   window.addEventListener('keydown', onKey)
   if (config.value?.preview) {
     document.addEventListener('fullscreenchange', onFullscreenChange)
@@ -349,6 +422,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   clearTimeout(timer)
+  clearTimeout(infoTimer)
   clearTimeout(playlistTimer)
   clearTimeout(reloadTimer)
   clearInterval(heartbeat)
@@ -362,27 +436,87 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="frame" :style="{ backgroundColor: config?.matte ?? '#000000' }" @click="exitPreview">
+  <main class="frame" :class="{ preview: config?.preview }" :style="{ backgroundColor: config?.matte ?? '#000000' }" @click="toggleInfo">
     <template v-for="(slide, index) in slides" :key="index">
       <div class="slide" :class="{ visible: active === index && slide.src }">
         <img v-if="slide.backdrop" :src="slide.backdrop" alt="" class="backdrop">
         <img v-if="slide.src" :src="slide.src" alt="" class="photo">
-        <p v-if="slide.caption && config?.show_captions !== false" class="caption">{{ slide.caption }}</p>
+        <p v-if="slide.caption && config?.show_captions !== false && !infoOpen" class="caption">{{ slide.caption }}</p>
       </div>
     </template>
     <p v-if="empty" class="caption">No photos to show</p>
     <span v-if="offline && !sleeping" class="offline" role="status" aria-label="Offline" />
     <div v-if="sleeping" class="sleep" />
-    <p v-if="config?.preview" class="hint">Left and right arrows change photos. Esc returns to the admin.</p>
+    <section v-if="infoOpen" class="info" role="dialog" aria-label="About this photo">
+      <p v-if="slides[active]?.caption" class="info-caption">{{ slides[active]?.caption }}</p>
+      <dl v-if="infoRows.length" class="info-rows">
+        <template v-for="row in infoRows" :key="row.label">
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
+        </template>
+      </dl>
+      <p v-else-if="!info" class="info-hint">Loading details…</p>
+      <p class="info-hint">Tap again to close. The slideshow carries on after two minutes.</p>
+      <button v-if="config?.preview" type="button" class="info-exit" @click.stop="exitPreview">Exit slideshow</button>
+    </section>
+    <p v-if="config?.preview && !infoOpen" class="hint">Tap a photo for its details. Arrows change photos. Esc returns to the admin.</p>
   </main>
 </template>
 
 <style scoped>
 .frame {
+  /* A Helvetica-like sans-serif, from fonts the system already has, so a frame downloads none. */
+  --frame-font: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", "Nimbus Sans", "Nimbus Sans L", sans-serif;
   position: fixed;
   inset: 0;
   overflow: hidden;
   cursor: none;
+}
+.frame.preview {
+  cursor: pointer;
+}
+/* Details for the photo on screen, readable from a few steps away. */
+.info {
+  position: absolute;
+  left: 3vmin;
+  bottom: 3vmin;
+  max-width: min(70vw, 60rem);
+  padding: 2.4vmin 3vmin;
+  border-radius: 1.2vmin;
+  background: rgb(0 0 0 / 0.72);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-family: var(--frame-font);
+  font-size: clamp(15px, 2.1vmin, 44px);
+  line-height: 1.35;
+  cursor: default;
+}
+.info-caption {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin-bottom: 0.6em;
+}
+.info-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3em 1.2em;
+}
+.info-rows dt {
+  color: rgb(255 255 255 / 0.65);
+}
+.info-hint {
+  margin-top: 0.8em;
+  font-size: 0.75em;
+  color: rgb(255 255 255 / 0.6);
+}
+.info-exit {
+  margin-top: 1em;
+  padding: 0.5em 1em;
+  border-radius: 0.4em;
+  background: #f2b134;
+  color: #10181c;
+  font-weight: 700;
+  cursor: pointer;
 }
 .slide {
   position: absolute;
@@ -418,8 +552,9 @@ onBeforeUnmount(() => {
   background: rgb(0 0 0 / 0.6);
   color: #fff;
   text-align: center;
-  /* Read from across a room: about 3.5% of the screen's short side, so roughly 38px on 1080p and 75px on 4K. */
-  font-size: clamp(18px, 3.5vmin, 80px);
+  /* Read from across a room: about 2.6% of the screen's short side, roughly 28px on 1080p and 56px on 4K. */
+  font-family: var(--frame-font);
+  font-size: clamp(16px, 2.6vmin, 60px);
   font-weight: 500;
   line-height: 1.25;
 }

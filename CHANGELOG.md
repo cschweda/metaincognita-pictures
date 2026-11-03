@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- A show/hide button on the login password.
+- Tap or click a frame to see the photo's caption, date, camera settings, size, and tags, holding it on screen until the next tap, a new photo, or two minutes. Frames never get the location. The admin's own slideshow does the same, with an Exit slideshow button for phones.
+- Each frame card has a Timing section, with ten choices from 10 seconds to an hour. New frames show each photo for a minute.
+- The frame pairing screen names the project and its GitHub address, as plain text so a kiosk can't be stranded on another site.
 - Demo mode. A new install fetches 15 random royalty-free photos from Lorem Picsum on first start, tagged, about half captioned, in two playlists with a preset, so it can be tried at once. A banner shows the mode and the load progress. New demo photos swaps in a fresh set after one confirmation, keeping frames paired. The first upload of your own switches the app to live for good; leftover demo photos can then be removed with the typed count and password. Start over can load the demo afterwards. `NUXT_DEMO_AUTOLOAD=false` starts empty instead.
 - Start over, under More: deletes every photo, frame, playlist, tag, and preset after two confirmations, a 10-second wait, a sentence typed by hand with pasting blocked, and the admin password. The server checks the same things, with a one-time token that must be at least 10 seconds old.
 - Deleting two or more photos needs the count typed by hand (for example `delete 12 photos`), the admin password, and a 5-second wait. One photo keeps its single confirmation, and single deletes are limited to 30 a minute so they can't be used to get around this.
@@ -83,6 +87,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Five wrong passwords lock that address out of logging in for five minutes. Each wrong try says how many are left, and the login button counts the lockout down. Other addresses can still log in, so nobody can lock the owner out. Start over, bulk delete, and demo removal share the same check and lockout.
+- Frame captions are smaller, about 28 px on a 1080p screen, in a Helvetica-like sans-serif from the system.
+- An unpaired screen goes straight to pairing without any refused requests, so the browser console stays clean, and the login form has a hidden username field for password managers.
 - Fixes from a review of Start over and demo mode:
   - Start over and removing the demo now wait their turn in the photo queue and stop a demo load in progress, so photos can't reappear after everything was deleted.
   - The app only returns to demo mode while none of the owner's photos are there.

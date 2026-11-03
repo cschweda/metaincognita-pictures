@@ -20,8 +20,9 @@ export default defineEventHandler((event) => {
 
     const deviceId = ulid()
     db.prepare(
-      `INSERT INTO devices (id, name, token_hash, screen_w, screen_h, dpr, paired_at, token_rotated_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      // A minute per photo: long enough to take one in. It can be changed on the frame's card.
+      `INSERT INTO devices (id, name, token_hash, screen_w, screen_h, dpr, interval_sec, paired_at, token_rotated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 60, datetime('now'), datetime('now'))`,
     ).run(deviceId, pairing.name ?? 'Frame', sha256(token), pairing.screen_w, pairing.screen_h, pairing.dpr)
     db.prepare(
       `UPDATE pairings SET status = 'claimed', device_id = ?, claimed_at = datetime('now') WHERE id = ?`,
