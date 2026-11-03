@@ -146,7 +146,7 @@ async function start() {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   opacity: 0;
   transition: opacity 1s ease;
 }
@@ -156,6 +156,10 @@ async function start() {
 @media (max-width: 640px) {
   .start {
     grid-template-columns: 1fr;
+  }
+  /* On a phone the preview would fill the first screen and push the controls out of sight. */
+  .print {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

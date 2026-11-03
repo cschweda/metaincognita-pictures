@@ -41,16 +41,42 @@ interface Details {
   variant_format: { format: string, quality: number, metadata: string }
 }
 
-const props = defineProps<{ photoId: string | null }>()
+/** The grid's own copy of the photo, so edits here show in the grid at once. */
+interface EditablePhoto {
+  id: string
+  filename: string
+  hidden: number
+  caption: string | null
+  taken_at: string | null
+}
+
+const props = defineProps<{ photo: EditablePhoto | null, frames: Frame[], confirmingDelete: boolean }>()
+const emit = defineEmits<{
+  caption: [photo: EditablePhoto, value: string]
+  date: [photo: EditablePhoto, value: string]
+  shown: [photo: EditablePhoto, value: boolean]
+  send: [photo: EditablePhoto, frame: Frame]
+  delete: [photo: EditablePhoto]
+}>()
 const open = defineModel<boolean>('open', { default: false })
+const sent = ref('')
+const frameItems = computed(() => props.frames.map(frame => ({
+  label: frame.name,
+  onSelect: () => {
+    if (!props.photo) return
+    emit('send', props.photo, frame)
+    sent.value = `On ${frame.name} now.`
+  },
+})))
 
 const details = ref<Details | null>(null)
 const failed = ref(false)
 
-watch(() => [props.photoId, open.value] as const, async ([id, isOpen]) => {
+watch(() => [props.photo?.id, open.value] as const, async ([id, isOpen]) => {
   if (!id || !isOpen) return
   details.value = null
   failed.value = false
+  sent.value = ''
   try {
     details.value = await $fetch<Details>(`/api/photos/${id}/details`)
   }
@@ -168,12 +194,49 @@ const sections = computed(() => {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="details?.photo.filename ?? 'Photo details'" description="Details and metadata for this photo" :ui="{ content: 'sm:max-w-2xl' }">
+  <UModal v-model:open="open" :title="photo?.filename ?? 'Photo'" description="Edit this photo, and see its details and metadata" :ui="{ content: 'sm:max-w-2xl' }">
     <template #body>
       <p v-if="failed" role="alert" class="text-error">Couldn't load this photo's details.</p>
       <p v-else-if="!details" class="text-muted">Loading…</p>
       <div v-else class="flex flex-col gap-6">
         <img :src="`/v/${details.photo.id}-640.webp`" alt="" class="mx-auto max-h-56 rounded object-contain">
+
+        <section v-if="photo" aria-label="Edit" class="flex flex-col gap-3 rounded-lg bg-elevated p-4">
+          <USwitch
+            :model-value="!photo.hidden"
+            label="Show on frames"
+            :description="photo.hidden ? 'Hidden. Frames skip it, and can\'t load it.' : 'Frames can show it.'"
+            @update:model-value="emit('shown', photo, $event === true)"
+          />
+          <UFormField label="Caption">
+            <UInput
+              :model-value="photo.caption ?? ''"
+              name="details-caption"
+              placeholder="Shown on frames that have captions on"
+              maxlength="200"
+              class="w-full"
+              @change="emit('caption', photo, ($event.target as HTMLInputElement).value)"
+            />
+          </UFormField>
+          <UFormField label="Date taken" help="Used for On this day and the date orders">
+            <UInput
+              :model-value="photo.taken_at?.slice(0, 10) ?? ''"
+              name="details-date"
+              type="date"
+              class="w-full sm:w-56"
+              @change="emit('date', photo, ($event.target as HTMLInputElement).value)"
+            />
+          </UFormField>
+          <div class="flex flex-wrap items-center gap-2">
+            <UDropdownMenu v-if="frames.length" :items="frameItems">
+              <UButton variant="soft" icon="i-lucide-monitor-play">Show on a frame now</UButton>
+            </UDropdownMenu>
+            <UButton color="error" :variant="confirmingDelete ? 'solid' : 'soft'" icon="i-lucide-trash-2" @click="emit('delete', photo)">
+              {{ confirmingDelete ? 'Tap again to delete for good' : 'Delete photo' }}
+            </UButton>
+            <span role="status" class="text-sm">{{ sent }}</span>
+          </div>
+        </section>
         <section v-for="section in sections" :key="section.title" class="flex flex-col gap-2">
           <h3 class="text-xl font-bold">{{ section.title }}</h3>
           <p v-if="section.note" class="text-sm text-muted">{{ section.note }}</p>

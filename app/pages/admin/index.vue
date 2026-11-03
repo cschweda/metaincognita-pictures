@@ -37,6 +37,12 @@ const bulkCaption = ref('')
 const bulkDate = ref('')
 const detailsFor = ref<string | null>(null)
 const detailsOpen = ref(false)
+const detailsPhoto = computed(() => photos.value.find(photo => photo.id === detailsFor.value) ?? null)
+async function deleteFromDetails(photo: Photo) {
+  const wasConfirming = confirming.value === photo.id
+  await remove(photo)
+  if (wasConfirming) detailsOpen.value = false
+}
 function showDetails(photo: Photo) {
   detailsFor.value = photo.id
   detailsOpen.value = true
@@ -524,12 +530,12 @@ async function remove(photo: Photo) {
       </ul>
     </section>
 
-    <ul v-show="!arranging" ref="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7">
-      <li v-for="(photo, index) in photos" :key="photo.id" class="flex flex-col gap-2">
-        <div class="relative">
+    <ul v-show="!arranging" ref="grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-5">
+      <li v-for="(photo, index) in photos" :key="photo.id" class="flex min-w-0 flex-col gap-1.5">
+        <div class="group relative overflow-hidden rounded-lg bg-elevated" :class="{ 'ring-3 ring-primary': selected.includes(photo.id) }">
           <button
             type="button"
-            class="block w-full cursor-zoom-in rounded"
+            class="block w-full cursor-zoom-in"
             :aria-label="`See ${photo.filename} in the slideshow`"
             title="See in the slideshow"
             @click="openInSlideshow(photo)"
@@ -538,82 +544,64 @@ async function remove(photo: Photo) {
               :src="`/v/${photo.id}-640.webp`"
               :alt="photo.filename"
               loading="lazy"
-              class="aspect-square w-full object-contain bg-elevated rounded"
-              :class="{ 'opacity-40': photo.hidden }"
+              class="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+              :class="{ 'opacity-40 grayscale': photo.hidden }"
             >
           </button>
+          <div class="absolute left-2 top-2 grid size-9 place-items-center rounded-full bg-black/55 backdrop-blur-sm">
+            <UCheckbox
+              :model-value="selected.includes(photo.id)"
+              :name="`select-${photo.id}`"
+              :aria-label="`Select ${photo.filename}`"
+              @update:model-value="toggleSelected(photo.id, $event === true)"
+            />
+          </div>
+          <span v-if="photo.hidden" class="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+            <UIcon name="i-lucide-eye-off" class="size-3.5" aria-hidden="true" />
+            Hidden
+          </span>
           <button
             type="button"
             data-drag-handle
             :aria-label="`Move ${photo.filename}. Use the arrow keys.`"
             title="Drag to rearrange"
-            class="absolute top-2 right-2 size-11 grid pointer-coarse:hidden place-items-center rounded bg-black/70 text-white cursor-grab active:cursor-grabbing touch-none select-none [-webkit-touch-callout:none]"
+            class="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden cursor-grab active:cursor-grabbing touch-none select-none [-webkit-touch-callout:none]"
             @keydown.left.prevent="moveWithKeyboard($event, index)"
             @keydown.up.prevent="moveWithKeyboard($event, index)"
             @keydown.right.prevent="moveWithKeyboard($event, index)"
             @keydown.down.prevent="moveWithKeyboard($event, index)"
           >
-            <UIcon name="i-lucide-grip" aria-hidden="true" />
+            <UIcon name="i-lucide-grip" class="size-4" aria-hidden="true" />
           </button>
           <button
             type="button"
-            :aria-label="`Details and metadata for ${photo.filename}`"
-            title="Details and metadata"
-            class="absolute bottom-2 right-2 size-11 grid place-items-center rounded bg-black/70 text-white hover:bg-black/85"
+            :aria-label="`Edit and see details for ${photo.filename}`"
+            title="Edit and details"
+            class="absolute bottom-2 right-2 grid size-10 place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/80"
             @click="showDetails(photo)"
           >
             <UIcon name="i-lucide-ellipsis-vertical" class="size-5" aria-hidden="true" />
           </button>
         </div>
-        <UCheckbox
-          :model-value="selected.includes(photo.id)"
-          :name="`select-${photo.id}`"
-          label="Select"
-          @update:model-value="toggleSelected(photo.id, $event === true)"
-        />
-        <UCheckbox
-          :model-value="!photo.hidden"
-          :name="`shown-${photo.id}`"
-          label="Show on frames"
-          @update:model-value="setShown(photo, $event === true)"
-        />
-        <UInput
-          :model-value="photo.caption ?? ''"
-          :name="`caption-${photo.id}`"
-          placeholder="Caption (optional)"
-          maxlength="200"
-          :aria-label="`Caption for ${photo.filename}`"
-          @change="saveCaption(photo, ($event.target as HTMLInputElement).value)"
-        />
-        <UInput
-          :model-value="photo.taken_at?.slice(0, 10) ?? ''"
-          :name="`date-${photo.id}`"
-          type="date"
-          :aria-label="`Date for ${photo.filename}`"
-          @change="saveDate(photo, ($event.target as HTMLInputElement).value)"
-        />
-        <p v-if="photo.tags.length" class="text-sm text-muted truncate">
-          {{ photo.tags.map(tag => tag.name).join(', ') }}
-        </p>
-        <div class="hidden pointer-coarse:flex gap-1" role="group" :aria-label="`Move ${photo.filename}`">
-          <UButton size="sm" variant="soft" color="neutral" class="grow justify-center" :disabled="index === 0" @click="movePhoto(index, index - 1)">Earlier</UButton>
-          <UButton size="sm" variant="soft" color="neutral" class="grow justify-center" :disabled="index === photos.length - 1" @click="movePhoto(index, index + 1)">Later</UButton>
-        </div>
-        <div class="flex flex-wrap gap-1">
-          <UDropdownMenu v-if="onlineFrames.length" :items="frameMenu(photo)">
-            <UButton size="sm" variant="ghost" color="neutral">Show on a frame</UButton>
-          </UDropdownMenu>
-          <UButton size="sm" variant="ghost" color="error" @click="remove(photo)">
-            {{ confirming === photo.id ? 'Really delete?' : 'Delete' }}
-          </UButton>
-        </div>
+        <p class="truncate text-sm font-medium" :class="photo.caption ? 'text-default' : 'text-muted'">{{ photo.caption || photo.filename }}</p>
+        <p v-if="photo.tags.length" class="-mt-1 truncate text-xs text-muted">{{ photo.tags.map(tag => tag.name).join(' · ') }}</p>
       </li>
     </ul>
 
     <UButton v-if="next" block variant="soft" :loading="loading" @click="next !== null && loadPhotos(next)">
       Load more
     </UButton>
-    <PhotoDetails v-model:open="detailsOpen" :photo-id="detailsFor" />
+    <PhotoDetails
+      v-model:open="detailsOpen"
+      :photo="detailsPhoto"
+      :frames="onlineFrames"
+      :confirming-delete="confirming === detailsFor"
+      @caption="(_, value) => detailsPhoto && saveCaption(detailsPhoto, value)"
+      @date="(_, value) => detailsPhoto && saveDate(detailsPhoto, value)"
+      @shown="(_, value) => detailsPhoto && setShown(detailsPhoto, value)"
+      @send="(_, frame) => detailsPhoto && sendToFrame(detailsPhoto, frame)"
+      @delete="() => detailsPhoto && deleteFromDetails(detailsPhoto)"
+    />
   </AdminShell>
 </template>
 

@@ -334,7 +334,7 @@ async function deletePlaylist() {
                 <span class="absolute left-1 top-1 rounded bg-black/70 px-1.5 text-sm font-bold text-white tabular-nums">{{ index + 1 }}</span>
               </button>
               <p v-if="photo.hidden" class="text-xs text-muted">Hidden, so skipped</p>
-              <UButton size="xs" variant="ghost" color="error" class="justify-center" :aria-label="`Take ${photo.filename} out of the playlist`" @click="remove(photo)">
+              <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-x" class="justify-center text-muted hover:text-error" :aria-label="`Take ${photo.filename} out of the playlist`" @click="remove(photo)">
                 Take out
               </UButton>
             </li>

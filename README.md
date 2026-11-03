@@ -23,6 +23,58 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 - **Shows what's in each photo.** The ⋮ button on any photo shows its original format, file size, compression, colour profile, camera and lens settings, location if the camera recorded one, and the frame images made from it.
 - **Stays yours.** Download every original, with its tags and captions, at any time. The Stats page shows server health and roughly how many more photos will fit, and the Technical details page shows the exact version running.
 
+## Screenshots
+
+All screenshots use the sample photos from `pnpm seed:fetch`, with two demo frames running.
+
+**Photos.** The admin home. Start a slideshow on every frame, one frame, or this screen, from all photos, a playlist, or a tag, in random or sequential order. A remote works the chosen frames. Below it, upload and browse the library.
+
+![The Photos page: a large Start slideshow banner with Playlist, Tag, Order, and Play on dropdowns, a remote for both frames, an upload area, and a grid of square photo tiles](docs/screenshots/photos.webp)
+
+**Photo details.** The ⋮ on any photo. Turn it on or off for frames, set its caption and date, send it to a frame now, or delete it. Below that: the original file's format, size, compression, and camera data, location if the camera recorded it, and the frame images made from it.
+
+![The photo details panel: a preview, a Show on frames switch, caption and date fields, Show on a frame now and Delete buttons, then the photo's details](docs/screenshots/photo-details.webp)
+
+**Frames.** Each frame on its own card: what it's showing now, a remote, and what it shows (tags, a preset, or a playlist), plus its matte, backdrop, captions, timing, sleep hours, and schedule. **Deactivate** retires it, and it has to be paired again.
+
+![The Frames page: cards for Kitchen, showing a playlist, and Living room, showing photos tagged landscape, each with a remote, matte colours, and display options](docs/screenshots/frames.webp)
+
+**Playlists.** The playlist beside your library. Drag photos in, drag to reorder, and drag one back to take it out. On a phone, tap Add, tap to move, and tap Take out.
+
+![The Kitchen playlist page: numbered photos in order on the left, and the library with Add buttons on the right](docs/screenshots/playlist.webp)
+
+**Pairing.** Open your site on the frame, and it shows a code. Enter it here, check the screen size and IP address, name the frame, and approve.
+
+![The Pair a frame page: a code entered, the frame's screen size, IP address, and request time, a name field, and help on where the code comes from](docs/screenshots/pair.webp)
+
+**On the wall.** A panorama in full on a 16:9 screen, with a blurred copy of the photo filling the bars and its caption.
+
+![A frame showing a lake panorama in full, with blurred bars above and below and the caption Evening at the reservoir](docs/screenshots/frame.webp)
+
+**On your phone.** The same admin, built for a phone first. Add it to your home screen and it opens like an app.
+
+<img src="docs/screenshots/phone.webp" alt="The Photos page on a phone: the Start slideshow banner, then the Playlist, Tag, Order, and Play on dropdowns and the remote" width="320">
+
+## Why host it yourself?
+
+### Why isn't there a free hosted version?
+
+Because hosting other people's family photos for free is the deal that leaves you worse off.
+
+- **Somebody pays for every photo.** A photo and its four frame sizes take about 7 MB, so a 10,000-photo family library is about 70 GB before backups, and every frame downloads every photo it shows. A service that charges nothing pays for that some other way: ads, selling or mining what's in your photos, a subscription later, or shutting down. When a free service shuts down, the frames in your house go dark with it.
+- **A service holding thousands of families' photos is a target.** It needs accounts, password resets, abuse handling, legal requests, and someone on call when it breaks. OpenMantel is built the other way: one owner and one server, with no accounts to steal and no shared database of everyone's pictures. That's a large part of why it's small enough to audit (see [Security audits](#security-audits)).
+- **It's free, just not hosted.** The code is MIT licensed and always will be. What it costs you is a few dollars a month of server, which you control, instead of your photos, which you'd give up.
+
+### Why is self-hosting the better route?
+
+- **Your photos stay yours.** They live on a server you control. Nothing is scanned, analysed, used for training, or shown to anyone else, and location data never reaches a frame.
+- **It costs less than a store-bought frame's subscription.** A VPS at about $6 a month, or a computer you already own, runs it with room for thousands of photos. There's no per-frame fee, and nobody can raise the price or switch off your frames.
+- **It keeps working.** Frames keep a copy of their photos and play on without the internet, and the code can't disappear, because you have it.
+- **You can see how it works.** Every line is open, it's tested, and its security audits are published below.
+- **You can leave whenever you like.** Download every original with its tags and captions at any time.
+
+The honest trade-off: you look after the server. Updating is one command, HTTPS is set up for you, and the database is snapshotted daily with Docker, but keeping an off-site backup is up to you. The [self-hosting guide](docs/self-hosting.md) covers it.
+
 ## Self-hosting
 
 You need a server with Docker Compose, a domain name pointing at it, and ports 80 and 443 open. HTTPS is required, and the included Caddy setup gets the certificate for you.
@@ -104,7 +156,7 @@ Every red/blue team audit is recorded here, newest first. The latest is listed i
 
 **Method:** three red teams each attacked a throwaway local copy in one area: logins, sessions and pairing (RA); uploads, images and file serving (RF); and API logic, frames, and infrastructure (RX). Each finding needed a working proof. A separate blue team then tried every attack again on the fixed build, looked for ways around each fix, and checked for regressions. It found one bypass and two regressions, and all three were then fixed. An automated review of the fix commit found one more bypass (RX-6b), also fixed. Production was never attacked.
 
-**Result:** 1 High, 4 Medium, 12 Low, and 6 informational findings. All are fixed except the items marked as accepted, or as needing a server change by the owner.
+**Result:** 1 High, 4 Medium, 12 Low, and 6 informational findings. All are fixed except the two marked as accepted.
 
 | ID | Finding | Severity | Mitigation |
 |---|---|---|---|
@@ -124,7 +176,7 @@ Every red/blue team audit is recorded here, newest first. The latest is listed i
 | RF-4 | Tags sent with an upload skipped the 40-character rule | Low | Fixed: the same checks as the Tags page, and at most 20 tags. |
 | RX-9a | `.gitignore` allowed `.env.local` to be committed | Low | Fixed. No secrets were ever committed. |
 | RX-9b | GitHub Actions were pinned to version tags that could be moved, while the image workflow can publish to the registry | Low | Fixed: every action is pinned to a commit. |
-| OPS-1 | The production nginx config, installed by Laravel Forge, trusts `X-Forwarded-For` from Cloudflare's addresses although the site isn't behind Cloudflare. A request sent through Cloudflare could set its own client IP and undo RA-1 there. It allows 200 MB request bodies on every path, and 768 connections per worker. | Low | Owner action, below. |
+| OPS-1 | The production nginx config, installed by Laravel Forge, trusts `X-Forwarded-For` from Cloudflare's addresses although the site isn't behind Cloudflare. A request sent through Cloudflare could set its own client IP and undo RA-1 there. It allowed 200 MB request bodies on every path, and 768 connections per worker. | Low | Fixed by the owner on 2026-11-03: the Cloudflare file is disabled, bodies are capped at 64 KB except uploads (1 GB) and playlists (256 KB), and nginx allows 4096 connections. Checked from outside. |
 | RA-3 | The frame heartbeat doesn't require the CSRF header | Info | Accepted: the frame cookie is `SameSite=Lax`, so other sites can't send it, and a heartbeat only updates that frame's own record. |
 | RA-4 | Route checks used the path before `..` segments were resolved. No working bypass was found. | Info | Fixed: paths with dot segments or encoded slashes are refused. |
 | RX-8 | Frame setup scripts wrote `FRAME_URL` and sleep times into launch files without checking them | Info | Fixed: only a plain `https://` address and HH:MM times are accepted. |
@@ -132,11 +184,11 @@ Every red/blue team audit is recorded here, newest first. The latest is listed i
 | RX-9d | In Docker, the off-site backup failed silently every night because the image has no `rclone` | Info | Fixed: it now fails with a clear message. Install `rclone` on the host, or run the backup from there. |
 | RX-9e | Base images aren't pinned by digest, and `pnpm audit` reports four moderate or low issues | Info | Accepted: Dependabot updates the images, and the four advisories are in build tools only, not in what the server runs. |
 
-**Owner action (OPS-1), in the Forge panel for the droplet:**
-
-1. Delete `/etc/nginx/conf.d/cloudflare.conf`, or remove its `real_ip_header` and `set_real_ip_from` lines. The site isn't behind Cloudflare.
-2. Set `client_max_body_size 64k;` for the site, with `client_max_body_size 1g;` only in a `location = /api/photos` block, and add `client_body_timeout 30s;`.
-3. Raise `worker_connections` to 4096, and consider `limit_req` on `/api/auth/login` and `/api/pair/start`.
+**Server settings (OPS-1), applied by the owner.** If you run OpenMantel behind nginx, use the same settings:
+- `client_max_body_size 64k;` for the site, raised to `1g` in `location = /api/photos` and `256k` in `location /api/playlists`.
+- `client_body_timeout 30s;`
+- `proxy_set_header X-Real-IP $remote_addr;`
+- No `real_ip_header` that trusts a CDN you don't use.
 
 **Held up under attack:** CSRF on every admin change; default-deny route checks, including path tricks; frames kept out of admin routes; revoking a frame takes effect at once, including live connections; logout and per-session sign-out; `HttpOnly`, `Secure`, `SameSite=Lax` cookies; fresh session ids at each login; the pairing code design and its replay check; no SQL injection anywhere; no mass assignment; frames can't use the admin preview options; no stack traces in production; location and other metadata stripped from frame images; originals never served; image file names validated; caption, file name and tag text escaped; strict CSP with nonces, HSTS, and TLS 1.3 in production; no secrets in git history.
 

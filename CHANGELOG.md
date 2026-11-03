@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- README screenshots of Photos, photo details, Frames, a playlist, pairing, a frame on the wall, and the phone view, plus a See it section on openmantel.com.
+- README section on why OpenMantel is self-hosted rather than offered as a free hosted service.
+- Help on the Pair a frame page explaining where the code comes from, with this site's address.
 - Photo details: a ⋮ button on each photo in the grid opens its file name, dates, size, tags, playlists, the original's format, file size, compression, colour space and profile, camera and lens settings, location if recorded, and the four frame images with their sizes.
 - Security audits section in the README: the first red/blue team audit, with every finding and its mitigation, kept newest first with earlier audits compressed.
 - A Playlist dropdown beside Show, so Start slideshow plays all photos (the default) or a chosen playlist, with Order and Play on as before.
@@ -77,6 +80,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- The photo grid is now square, cropped tiles with a select circle and a ⋮ on each photo. Caption, date, show on frames, send to a frame, and delete moved into the ⋮ panel, which shrinks the page by more than half.
+- The admin bar keeps Photos, Frames, Playlists, Tags, and Pair a frame; Stats, Login sessions, Technical details, GitHub, and Log out are under More.
+- The Start slideshow preview fills its frame, and is hidden on phones so the controls come first. The Show dropdown is now Tag, defaulting to Any tag, and the remote reads naturally.
+- Frame cards label the matte colours, and tag chips look like buttons. Login says what it's for, and playlist photos have a small Take out button.
+- Captions on frames are about three times larger, sized to the screen, so they can be read across a room.
 - The openmantel.com project site lists playlists, starting a slideshow on one frame, endless play, uploads from a phone, and photo details.
 - Security fixes from red/blue team audit 1 (see README):
   - Request bodies are limited before any route reads them.

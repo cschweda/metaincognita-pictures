@@ -28,6 +28,7 @@ async function login() {
   <main class="min-h-dvh flex items-center justify-center p-4">
     <form class="w-full max-w-xs flex flex-col gap-3" @submit.prevent="login">
       <h1 class="text-5xl font-extrabold tracking-tight">OpenMantel</h1>
+      <p class="-mt-1 text-muted">Sign in to manage your photos and frames.</p>
       <UFormField label="Password" :error="error || undefined">
         <UInput
           v-model="password"

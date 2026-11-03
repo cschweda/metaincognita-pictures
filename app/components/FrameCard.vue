@@ -184,7 +184,7 @@ function toggleDay(day: number) {
 
     <div class="flex flex-col gap-2">
       <div class="flex items-center justify-between gap-2">
-        <h3 class="text-xl font-bold">Showing</h3>
+        <h3 class="text-xl font-bold">What it shows</h3>
         <UFieldGroup size="sm" aria-label="What this frame shows">
           <UButton :variant="showsPlaylist ? 'soft' : 'solid'" color="neutral" :aria-pressed="!showsPlaylist" @click="showTags">
             By tag
@@ -256,7 +256,7 @@ function toggleDay(day: number) {
           <UButton
             size="sm"
             color="neutral"
-            :variant="frame.filter.tags.length === 0 ? 'solid' : 'soft'"
+            :variant="frame.filter.tags.length === 0 ? 'solid' : 'outline'"
             :aria-pressed="frame.filter.tags.length === 0"
             @click="save({ filter: { tags: [], mode: frame.filter.mode } })"
           >
@@ -267,7 +267,7 @@ function toggleDay(day: number) {
             :key="tag.id"
             size="sm"
             color="neutral"
-            :variant="frame.filter.tags.includes(tag.id) ? 'solid' : 'soft'"
+            :variant="frame.filter.tags.includes(tag.id) ? 'solid' : 'outline'"
             :aria-pressed="frame.filter.tags.includes(tag.id)"
             @click="toggleTag(tag.id)"
           >
@@ -278,6 +278,8 @@ function toggleDay(day: number) {
     </div>
 
     <div class="flex flex-col gap-2">
+      <h3 class="text-xl font-bold">Matte</h3>
+      <p class="-mt-1 text-sm text-muted">The colour around each photo, on screens whose shape doesn't match it.</p>
       <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Matte color">
         <button
           v-for="matte in MATTES"

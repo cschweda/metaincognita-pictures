@@ -49,6 +49,12 @@ section + section { margin-top: clamp(3rem, 7vw, 5rem); }
 .features h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: .15rem; }
 .features p, .prose { color: var(--soft); }
 .prose { max-width: 62ch; }
+.shots { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; margin-top: 1rem; }
+.shots figure { margin: 0; }
+.shots .wide { grid-column: 1 / -1; }
+.shots img { display: block; width: 100%; height: auto; border-radius: .5rem; box-shadow: 0 0 0 1px var(--line); }
+.shots figcaption { color: var(--muted); font-size: .9rem; margin-top: .5rem; }
+@media (max-width: 700px) { .shots { grid-template-columns: 1fr; } .shots .phone img { max-width: 320px; } }
 .prose + .prose { margin-top: .8rem; }
 .steps { list-style: none; padding: 0; counter-reset: step; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.5rem 2.5rem; }
 .steps li { counter-increment: step; color: var(--soft); }
@@ -110,6 +116,25 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-conten
           <li><h3>Takes iPhone photos</h3><p>HEIC works, photos are rotated correctly, and location data is removed from everything a frame receives.</p></li>
           <li><h3>Shows what's in each photo</h3><p>See any photo's format, size, compression, camera settings, and where it was taken, if the camera recorded it.</p></li>
         </ul>
+      </section>
+
+      <section aria-labelledby="see">
+        <h2 id="see">See it</h2>
+        <div class="shots">
+          <figure class="wide">
+            <img src="images/frame.webp" width="1280" height="720" loading="lazy" alt="A frame showing a lake panorama in full, with blurred bars above and below and a caption">
+            <figcaption>On the wall: a panorama in full, with a blurred backdrop and its caption.</figcaption>
+          </figure>
+          <figure>
+            <img src="images/photos.webp" width="1280" height="1250" loading="lazy" alt="The admin's Photos page, with a large Start slideshow banner, its options, and a grid of photos">
+            <figcaption>The admin: start a slideshow on every frame or just one.</figcaption>
+          </figure>
+          <figure class="phone">
+            <img src="images/phone.webp" width="780" height="1688" loading="lazy" alt="The admin on a phone, with the Start slideshow banner and its options">
+            <figcaption>The same admin on your phone.</figcaption>
+          </figure>
+        </div>
+        <p class="prose"><a href="https://github.com/cschweda/openmantel#screenshots">More screenshots</a>, and <a href="https://github.com/cschweda/openmantel#why-host-it-yourself">why it's self-hosted</a>.</p>
       </section>
 
       <section aria-labelledby="yours">

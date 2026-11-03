@@ -414,11 +414,14 @@ onBeforeUnmount(() => {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  padding: 0.6vmin 2vw;
+  padding: 1.2vmin 3vw;
   background: rgb(0 0 0 / 0.6);
   color: #fff;
   text-align: center;
-  font-size: clamp(14px, 1.8vmin, 24px);
+  /* Read from across a room: about 3.5% of the screen's short side, so roughly 38px on 1080p and 75px on 4K. */
+  font-size: clamp(18px, 3.5vmin, 80px);
+  font-weight: 500;
+  line-height: 1.25;
 }
 .offline {
   position: absolute;

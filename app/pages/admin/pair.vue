@@ -1,4 +1,9 @@
 <script setup lang="ts">
+const { repository } = useAppConfig()
+// Read in the browser, so it's the address the admin actually uses, https and all.
+const origin = ref('this site')
+onMounted(() => { origin.value = location.origin })
+
 definePageMeta({ middleware: 'admin' })
 
 interface Pending {
@@ -66,7 +71,8 @@ async function approve() {
 
 <template>
   <AdminShell title="Pair a frame">
-    <div class="max-w-md flex flex-col gap-4">
+    <div class="grid gap-8 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+    <div class="flex flex-col gap-4">
 
     <form class="flex flex-col gap-3" @submit.prevent="lookup">
       <UFormField label="Code on the frame">
@@ -101,6 +107,21 @@ async function approve() {
       </UFormField>
       <UButton type="submit" block>Approve</UButton>
     </form>
+    </div>
+
+    <aside aria-labelledby="pair-help" class="flex flex-col gap-3 rounded-lg bg-elevated p-5 lg:order-first lg:col-start-2 lg:row-start-1">
+      <h2 id="pair-help" class="text-xl font-bold">Where the code comes from</h2>
+      <ol class="flex list-decimal flex-col gap-2 ps-5 text-muted">
+        <li>On the computer behind the frame's screen, open <strong class="font-mono text-default break-all">{{ origin }}</strong> in a browser.</li>
+        <li>It shows a six-character code, such as <span class="font-mono text-default">ABC-234</span>. Type it here.</li>
+        <li>Check the screen size matches that screen, name it, and approve. The frame starts by itself and never asks again.</li>
+      </ol>
+      <p class="text-sm text-muted">
+        To run a frame full time, so it starts at login and restarts after a crash, use the setup script for
+        <a :href="`${repository}#setting-up-a-frame`" target="_blank" rel="noopener noreferrer" class="text-primary underline underline-offset-2">Mac, Ubuntu, Windows, or Raspberry Pi<span class="sr-only"> (opens in a new tab)</span></a>.
+        Codes last 10 minutes.
+      </p>
+    </aside>
     </div>
   </AdminShell>
 </template>

@@ -3,17 +3,24 @@
 const props = defineProps<{ hero?: boolean, title?: string }>()
 const route = useRoute()
 
+// The pages used every day stay in the bar. The rest live under More, so the bar fits a phone.
 const LINKS = [
   { label: 'Photos', to: '/admin' },
   { label: 'Frames', to: '/admin/frames' },
   { label: 'Playlists', to: '/admin/playlists' },
   { label: 'Tags', to: '/admin/tags' },
-  { label: 'Stats', to: '/admin/stats' },
-  { label: 'Pair a frame', to: '/admin/pair' },
-  { label: 'Sessions', to: '/admin/sessions' },
-  { label: 'Technical details', to: '/admin/technical' },
 ]
+const MORE = ['/admin/stats', '/admin/sessions', '/admin/technical']
 const { repository } = useAppConfig()
+const moreItems = computed(() => [
+  [
+    { label: 'Stats', icon: 'i-lucide-chart-column', to: '/admin/stats' },
+    { label: 'Login sessions', icon: 'i-lucide-key-round', to: '/admin/sessions' },
+    { label: 'Technical details', icon: 'i-lucide-info', to: '/admin/technical' },
+  ],
+  [{ label: 'GitHub', icon: 'i-lucide-external-link', to: repository, target: '_blank' }],
+  [{ label: 'Log out', icon: 'i-lucide-log-out', onSelect: logout }],
+])
 
 const heroPhotos = ref<string[]>([])
 const count = ref<number | null>(null)
@@ -46,7 +53,7 @@ const playlistItems = computed(() => [
   ...playlists.value.map(playlist => ({ label: `${playlist.name} (${playlist.photos})`, value: playlist.id })),
 ])
 const tagItems = computed(() => [
-  { label: 'No tag: all photos', value: 'all' },
+  { label: 'Any tag', value: 'all' },
   { label: 'On this day', value: 'memories' },
   ...tags.value.map(tag => ({ label: `${tag.name} (${tag.photos ?? 0})`, value: tag.id })),
 ])
@@ -128,25 +135,25 @@ async function logout() {
           v-for="link in LINKS"
           :key="link.to"
           :to="link.to"
-          class="rounded px-3 py-2 font-medium text-muted hover:text-default"
-          :class="{ 'text-primary hover:text-primary': route.path === link.to }"
+          class="rounded-md px-3 py-2 font-medium text-muted hover:bg-elevated hover:text-default"
+          :class="{ 'bg-elevated text-primary hover:text-primary': route.path === link.to || (link.to !== '/admin' && route.path.startsWith(`${link.to}/`)) }"
           :aria-current="route.path === link.to ? 'page' : undefined"
         >
           {{ link.label }}
         </NuxtLink>
-        <a
-          :href="repository"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-1.5 rounded px-3 py-2 font-medium text-muted hover:text-default"
-        >
-          GitHub
-          <UIcon name="i-lucide-external-link" class="size-4" aria-hidden="true" />
-          <span class="sr-only">(opens in a new tab)</span>
-        </a>
-        <button type="button" class="rounded px-3 py-2 font-medium text-muted hover:text-default" @click="logout">
-          Log out
-        </button>
+        <UButton to="/admin/pair" icon="i-lucide-plus" variant="soft" class="ms-1" :aria-current="route.path === '/admin/pair' ? 'page' : undefined">
+          Pair a frame
+        </UButton>
+        <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            trailing-icon="i-lucide-chevron-down"
+            :class="{ 'text-primary': MORE.includes(route.path) }"
+          >
+            More
+          </UButton>
+        </UDropdownMenu>
       </nav>
     </header>
 
@@ -162,7 +169,7 @@ async function logout() {
             @update:model-value="playlistChoice = $event === 'none' ? '' : String($event)"
           />
         </UFormField>
-        <UFormField label="Show" :help="playlistChoice ? 'Not used with a playlist' : undefined">
+        <UFormField label="Tag" :help="playlistChoice ? 'Not used with a playlist' : undefined">
           <USelect
             :disabled="Boolean(playlistChoice)"
             :model-value="tagFilter || 'all'"
@@ -192,7 +199,7 @@ async function logout() {
       <div v-if="target !== 'screen' && targetFrames.length" class="flex flex-wrap items-center gap-2">
         <template v-if="remoteFrames.length">
           <span class="text-muted">
-            Remote for {{ target === 'all' ? `all ${remoteFrames.length} online ${remoteFrames.length === 1 ? 'frame' : 'frames'}` : targetFrames[0]?.name }}
+            Remote for {{ target !== 'all' ? targetFrames[0]?.name : remoteFrames.length === 1 ? remoteFrames[0]?.name : remoteFrames.length === 2 ? 'both frames' : `all ${remoteFrames.length} frames` }}
           </span>
           <div class="flex gap-2" role="group" aria-label="Remote control">
             <UButton size="lg" variant="soft" color="neutral" icon="i-lucide-skip-back" aria-label="Previous photo" @click="control('previous')" />
