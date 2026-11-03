@@ -294,7 +294,7 @@ async function deletePlaylist() {
       </div>
       <p class="text-muted max-w-3xl">
         {{ playlist.frames.length ? `Showing on ${playlist.frames.join(', ')}.` : 'Not on a frame yet.' }}
-        To put it on a frame, choose it under Show on the Photos page and press Start slideshow, or pick it on the frame's card.
+        To put it on a frame, choose it under Playlist on the Photos page and press Start slideshow, or pick it on the frame's card.
       </p>
 
       <p v-if="error" role="alert" class="text-error">{{ error }}</p>

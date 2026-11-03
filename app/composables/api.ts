@@ -68,6 +68,18 @@ export function useTagFilter() {
 
 export type SlideshowOrder = 'random' | 'sequential'
 
+/** The playlist Start slideshow plays, by id. Empty means all photos, narrowed by the Show tag. */
+export function useSlideshowPlaylist() {
+  return useState('slideshow-playlist', () => '')
+}
+
+/** What Start slideshow plays: a playlist as `playlist:<id>`, or else the Show tag. */
+export function useSlideshowShow() {
+  const tagFilter = useTagFilter()
+  const playlist = useSlideshowPlaylist()
+  return computed(() => playlist.value ? `playlist:${playlist.value}` : tagFilter.value)
+}
+
 /** Where Start slideshow plays: 'all' frames, one frame's id, or 'screen' for this browser. */
 export function useSlideshowTarget() {
   return useState<string>('slideshow-target', () => 'all')

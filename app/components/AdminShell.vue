@@ -20,30 +20,34 @@ const count = ref<number | null>(null)
 
 const tagFilter = useTagFilter()
 const order = useSlideshowOrder()
-const ORDERS = [
+const playlistChoice = useSlideshowPlaylist()
+const show = useSlideshowShow()
+const ORDERS = computed(() => [
   { label: 'Random', value: 'random' },
-  { label: 'Sequential, in my order', value: 'sequential' },
-]
+  { label: playlistChoice.value ? 'Sequential, in playlist order' : 'Sequential, in my order', value: 'sequential' },
+])
 const { tags, loadTags } = useTags()
 const target = useSlideshowTarget()
 const frames = ref<Frame[]>([])
 const playlists = ref<Playlist[]>([])
 const remoteError = ref('')
 
-const PLAYLIST_PREFIX = 'playlist:'
 const tagName = computed(() => {
-  if (tagFilter.value === 'memories') return 'On this day'
-  if (tagFilter.value.startsWith(PLAYLIST_PREFIX)) {
-    const playlist = playlists.value.find(item => `${PLAYLIST_PREFIX}${item.id}` === tagFilter.value)
+  if (playlistChoice.value) {
+    const playlist = playlists.value.find(item => item.id === playlistChoice.value)
     if (!playlist) return undefined
     return /playlist$/i.test(playlist.name) ? playlist.name : `the ${playlist.name} playlist`
   }
+  if (tagFilter.value === 'memories') return 'On this day'
   return tags.value.find(tag => tag.id === tagFilter.value)?.name
 })
+const playlistItems = computed(() => [
+  { label: 'All photos', value: 'none' },
+  ...playlists.value.map(playlist => ({ label: `${playlist.name} (${playlist.photos})`, value: playlist.id })),
+])
 const tagItems = computed(() => [
   { label: 'No tag: all photos', value: 'all' },
   { label: 'On this day', value: 'memories' },
-  ...playlists.value.map(playlist => ({ label: `Playlist: ${playlist.name} (${playlist.photos})`, value: `${PLAYLIST_PREFIX}${playlist.id}` })),
   ...tags.value.map(tag => ({ label: `${tag.name} (${tag.photos ?? 0})`, value: tag.id })),
 ])
 const targetItems = computed(() => [
@@ -71,6 +75,8 @@ async function loadTargets() {
   ]).finally(() => { targetsLoaded.value = true })
   frames.value = deviceList.devices
   playlists.value = playlistList.playlists
+  // A playlist deleted elsewhere falls back to all photos.
+  if (playlistChoice.value && !playlists.value.some(playlist => playlist.id === playlistChoice.value)) playlistChoice.value = ''
   // With no frames, or a frame that has gone, play on this screen.
   if (target.value === 'all' ? frames.value.length === 0 : target.value !== 'screen' && !frames.value.some(frame => frame.id === target.value)) {
     target.value = frames.value.length ? 'all' : 'screen'
@@ -88,11 +94,11 @@ async function control(action: 'previous' | 'pause' | 'resume' | 'next') {
 
 async function loadHero() {
   const { photos } = await $fetch<{ photos: { id: string, hidden: number }[] }>('/api/photos', {
-    query: { limit: 200, tag: tagFilter.value || undefined },
+    query: { limit: 200, tag: show.value || undefined },
   })
   const visible = photos.filter(photo => !photo.hidden)
   heroPhotos.value = visible.slice(0, 8).map(photo => photo.id)
-  count.value = tagFilter.value ? visible.length : (await $fetch<{ showing: number }>('/api/stats')).showing
+  count.value = show.value ? visible.length : (await $fetch<{ showing: number }>('/api/stats')).showing
 }
 
 onMounted(() => {
@@ -103,7 +109,7 @@ onMounted(() => {
   targetTimer = setInterval(() => loadTargets().catch(() => undefined), 30_000) // Keeps online status and the remote current.
 })
 onBeforeUnmount(() => clearInterval(targetTimer))
-watch([tagFilter, tags], () => {
+watch([show, tags], () => {
   if (props.hero) loadHero()
 })
 
@@ -146,9 +152,19 @@ async function logout() {
 
     <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
       <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" :frames="targetFrames" :ready="targetsLoaded" @started="loadTargets" />
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <UFormField label="Show">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <UFormField label="Playlist" :help="playlists.length ? undefined : 'Make one on the Playlists page'">
           <USelect
+            :model-value="playlistChoice || 'none'"
+            :items="playlistItems"
+            size="lg"
+            class="w-full"
+            @update:model-value="playlistChoice = $event === 'none' ? '' : String($event)"
+          />
+        </UFormField>
+        <UFormField label="Show" :help="playlistChoice ? 'Not used with a playlist' : undefined">
+          <USelect
+            :disabled="Boolean(playlistChoice)"
             :model-value="tagFilter || 'all'"
             :items="tagItems"
             size="lg"

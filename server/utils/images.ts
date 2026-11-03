@@ -8,7 +8,7 @@ import { ulid } from 'ulid'
 import { db } from '../db'
 import type { Photo } from '../types'
 import { compressOriginal } from './compress'
-import { decodeHeic, VARIANT_SIZES, variantFile, writeVariants } from './variants'
+import { decodeHeic, MAX_PIXELS, VARIANT_SIZES, variantFile, writeVariants } from './variants'
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
 export const MAX_FILES_PER_REQUEST = 20
@@ -54,7 +54,7 @@ export function picturesPath(...parts: string[]): string {
   return join(useRuntimeConfig().picturesDir, ...parts)
 }
 
-function variantPath(id: string, size: number): string {
+export function variantPath(id: string, size: number): string {
   return picturesPath('v', variantFile(id, size))
 }
 
@@ -106,6 +106,11 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
     const heic = await isHeic(tempPath)
     const detected = heic ? 'heic' : metadata ? extensionFor(metadata) : undefined
     if (!metadata || !detected) return { status: 'rejected', error: 'Not a supported image.' }
+    // Checked from the header, before anything is decoded, so an oversized image costs no memory.
+    // HEIC is decoded in a separate process with no other size limit, so this matters most there.
+    if (!metadata.width || !metadata.height || metadata.width * metadata.height > MAX_PIXELS) {
+      return { status: 'rejected', error: `Larger than ${MAX_PIXELS / 1_000_000} megapixels.` }
+    }
 
     // Hashed before any conversion, so uploading the same file twice is still a duplicate.
     const hash = await hashFile(tempPath)
@@ -124,7 +129,7 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
         source = workPath
       }
 
-      const { width, height } = (await sharp(source).metadata()).autoOrient
+      const { width, height } = (await sharp(source, { limitInputPixels: MAX_PIXELS }).metadata()).autoOrient
 
       if (!heic && await compressOriginal(tempPath, workPath)) {
         extension = 'jpg'

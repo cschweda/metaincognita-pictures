@@ -35,6 +35,12 @@ if [[ -z "$BACKUP_REMOTE" ]]; then
   exit 0
 fi
 
+# The Docker image doesn't include rclone, so say so plainly instead of failing every night.
+if ! command -v rclone >/dev/null; then
+  echo "$(date -Is) off-site copy FAILED: BACKUP_REMOTE is set but rclone isn't installed. Install it, or run this script from the host." >&2
+  exit 1
+fi
+
 # --immutable never overwrites or deletes, so it works with a write-only key.
 rclone copy --immutable "$SNAPSHOT" "$BACKUP_REMOTE/db"
 rclone copy --immutable "$PICTURES_DIR/orig" "$BACKUP_REMOTE/orig"

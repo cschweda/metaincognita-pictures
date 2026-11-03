@@ -561,3 +561,143 @@ test('Start slideshow keeps a frame\'s memories-first setting unless On this day
   await adminJson('/api/slideshow/start', 'POST', { frame: id, show: 'memories', order: 'random' })
   assert.equal(await memoriesFirst(), true)
 })
+
+// Regression tests for the 2026-11-03 red/blue audit (README, Security audits).
+
+test('audit RX-1: large and unsized bodies are refused before any handler reads them', async () => {
+  const big = JSON.stringify({ password: 'x'.repeat(70 * 1024) })
+  assert.equal((await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: big })).status, 413)
+  assert.equal((await fetch(`${BASE}/api/pair/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: big })).status, 413)
+  const chunked = await fetch(`${BASE}/api/pair/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('{}')); controller.close() } }),
+    duplex: 'half',
+  } as RequestInit)
+  assert.equal(chunked.status, 411)
+})
+
+test('audit RA-4: paths with dot segments are refused', async () => {
+  // fetch() tidies dot segments before sending, so these go out raw, as an attacker would send them.
+  const { request } = await import('node:http')
+  const raw = (path: string) => new Promise<number>((resolve, reject) => {
+    request({ host: '127.0.0.1', port: PORT, path, headers: { cookie: admin } }, (response) => {
+      response.resume()
+      resolve(response.statusCode ?? 0)
+    }).on('error', reject).end()
+  })
+  for (const path of ['/api/frame/../devices', '/api/frame/..%2fdevices', '/api/frame/%2e%2e/devices', '/api/frame/..%5cdevices']) {
+    assert.equal(await raw(path), 400, path)
+  }
+  assert.equal(await raw('/api/devices'), 200)
+})
+
+test('audit RX-2, RX-3: a heartbeat only records a real photo id', async () => {
+  const { photo } = await upload('#717171', 'beat.jpg')
+  const { cookie } = await pairDevice('Beats')
+  const beat = (photo_id: string) => fetch(`${BASE}/api/frame/heartbeat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ photo_id }),
+  })
+  const current = async () => (await (await adminFetch('/api/devices')).json()).devices
+    .find((device: { name: string }) => device.name === 'Beats').current_photo_id
+
+  await beat(photo.id)
+  assert.equal(await current(), photo.id)
+  await beat('../api/photos/export?')
+  assert.equal(await current(), null)
+  await beat('01ZZZZZZZZZZZZZZZZZZZZZZZZ')
+  assert.equal(await current(), null, 'a well-formed id that is not a photo is not stored')
+})
+
+test('audit RX-4: a frame holds at most two live streams', async () => {
+  const { cookie } = await pairDevice('Streams')
+  const open = () => fetch(`${BASE}/api/frame/events`, { headers: { cookie } })
+  const first = await open()
+  const reader = first.body!.getReader()
+  await open()
+  await open()
+  // The oldest stream is closed by the server once a third opens.
+  const ended = await Promise.race([
+    (async () => { while (!(await reader.read()).done) { /* drain */ } return true })(),
+    new Promise(resolve => setTimeout(() => resolve(false), 3000)),
+  ])
+  assert.equal(ended, true)
+})
+
+test('audit RX-6: a frame cannot fetch a hidden photo, though the admin can', async () => {
+  const { photo } = await upload('#727272', 'secret.jpg')
+  const { cookie } = await pairDevice('Hidden check')
+  const image = `/v/${photo.id}-640.webp`
+  assert.equal((await fetch(BASE + image, { headers: { cookie } })).status, 200)
+  await adminJson(`/api/photos/${photo.id}`, 'PATCH', { hidden: true })
+  assert.equal((await fetch(BASE + image, { headers: { cookie } })).status, 404)
+  assert.equal((await adminFetch(image)).status, 200)
+})
+
+test('audit RX-7, RF-4: bulk tag changes and upload tags are limited', async () => {
+  const { photo } = await upload('#737373', 'tags.jpg')
+  const tooMany = Array.from({ length: 101 }, (_, i) => `t${i}`)
+  assert.equal((await adminJson('/api/photos/tags', 'POST', { photo_ids: [photo.id], remove: tooMany })).status, 400)
+
+  const image = await sharp({ create: { width: 30, height: 20, channels: 3, background: '#747474' } }).jpeg().toBuffer()
+  const send = async (tags: string) => {
+    const form = new FormData()
+    form.append('tags', tags)
+    form.append('photo', new Blob([new Uint8Array(image)], { type: 'image/jpeg' }), 'tagged.jpg')
+    return adminFetch('/api/photos', { method: 'POST', headers: CSRF, body: form })
+  }
+  assert.equal((await send('x'.repeat(41))).status, 400, 'a tag over 40 characters')
+  assert.equal((await send(tooMany.slice(0, 21).join(','))).status, 400, 'more than 20 tags')
+})
+
+test('audit RF-1: an image over 100 megapixels is refused from its header', async () => {
+  // A PNG claiming 12000 x 10000 (120 megapixels: over this app's limit, under sharp's own 268),
+  // with almost no pixel data, so the test itself needs no memory.
+  const { crc32, deflateSync } = await import('node:zlib')
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4)
+    length.writeUInt32BE(data.length)
+    const body = Buffer.concat([Buffer.from(type), data])
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(crc32(body))
+    return Buffer.concat([length, body, crc])
+  }
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(12000, 0)
+  header.writeUInt32BE(10000, 4)
+  header.set([8, 2, 0, 0, 0], 8)
+  const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', deflateSync(Buffer.alloc(64))), chunk('IEND', Buffer.alloc(0))])
+
+  const form = new FormData()
+  form.append('photo', new Blob([new Uint8Array(png)], { type: 'image/png' }), 'huge.png')
+  const { results } = await (await adminFetch('/api/photos', { method: 'POST', headers: CSRF, body: form })).json()
+  assert.equal(results[0].status, 'rejected')
+  assert.match(results[0].error, /megapixels/)
+})
+
+test('photo details show the original\'s format and camera data, for admins only', async () => {
+  const image = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#757575' } })
+    .jpeg({ quality: 90 })
+    .withExif({ IFD0: { Make: 'TestCam', Model: 'Model 7', Software: 'audit' } })
+    .toBuffer()
+  const form = new FormData()
+  form.append('photo', new Blob([new Uint8Array(image)], { type: 'image/jpeg' }), 'camera.jpg')
+  const { results } = await (await adminFetch('/api/photos', { method: 'POST', headers: CSRF, body: form })).json()
+  const id = results[0].photo.id
+
+  const details = await (await adminFetch(`/api/photos/${id}/details`)).json()
+  assert.equal(details.photo.filename, 'camera.jpg')
+  assert.equal(details.original.format, 'jpeg')
+  assert.equal(details.original.width, 400)
+  assert.equal(details.original.camera.make, 'TestCam')
+  assert.equal(details.original.camera.model, 'Model 7')
+  assert.equal(details.variants.length, 4)
+  assert.ok(details.variants.every((variant: { bytes: number, has_exif: boolean }) => variant.bytes > 0 && !variant.has_exif), 'frame images carry no EXIF')
+
+  assert.equal((await adminFetch('/api/photos/nope/details')).status, 404)
+  assert.equal((await fetch(`${BASE}/api/photos/${id}/details`)).status, 401)
+  const { cookie } = await pairDevice('Details check')
+  assert.equal((await fetch(`${BASE}/api/photos/${id}/details`, { headers: { cookie } })).status, 403)
+})

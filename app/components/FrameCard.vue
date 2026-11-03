@@ -28,6 +28,8 @@ const DAYS = [
 ]
 
 const expanded = ref(false)
+// The frame reports this id, so it's checked before it becomes part of an address the admin's browser loads.
+const showingNow = computed(() => /^[0-9A-HJKMNP-TV-Z]{26}$/.test(props.frame.current_photo_id ?? '') ? props.frame.current_photo_id : null)
 // Picking "Playlist" before any playlist exists shows how to make one, without changing the frame.
 const wantsPlaylist = ref(false)
 const showsPlaylist = computed(() => Boolean(props.frame.playlist_id) || wantsPlaylist.value)
@@ -160,8 +162,8 @@ function toggleDay(day: number) {
     <div class="flex items-center gap-3">
       <div class="size-24 shrink-0 rounded" :style="{ backgroundColor: frame.matte }">
         <img
-          v-if="frame.current_photo_id"
-          :src="`/v/${frame.current_photo_id}-640.webp`"
+          v-if="showingNow"
+          :src="`/v/${showingNow}-640.webp`"
           alt=""
           class="size-full object-contain"
         >

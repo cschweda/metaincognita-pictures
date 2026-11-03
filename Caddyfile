@@ -1,4 +1,14 @@
 {$DOMAIN} {
+	# Only the photo upload needs big bodies: up to 20 photos of 50 MB each.
+	@upload path /api/photos
+	request_body @upload {
+		max_size 1GB
+	}
+	@other not path /api/photos
+	request_body @other {
+		max_size 64KB
+	}
+
 	header {
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 		X-Content-Type-Options nosniff

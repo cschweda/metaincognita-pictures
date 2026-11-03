@@ -10,7 +10,7 @@ function dimension(value: unknown): number | null {
 
 export default defineEventHandler(async (event) => {
   const ip = clientIp(event)
-  if (!allowRequest(`pair-start:${ip}`, 12, 60 * 60_000)) {
+  if (!allowRequest(`pair-start:${ipBucket(ip)}`, 12, 60 * 60_000)) {
     throw createError({ statusCode: 429, statusMessage: 'Too many pairing requests' })
   }
 

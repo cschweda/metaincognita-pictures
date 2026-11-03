@@ -13,6 +13,10 @@ export default defineEventHandler(async (event) => {
   if (photoIds.length === 0 || photoIds.length > 1000) {
     throw createError({ statusCode: 400, statusMessage: 'Send between 1 and 1000 photo_ids' })
   }
+  // Each pair is a database write in one transaction, which blocks the server while it runs.
+  if (add.length > 100 || remove.length > 100) {
+    throw createError({ statusCode: 400, statusMessage: 'Add or remove at most 100 tags at a time' })
+  }
 
   const link = db.prepare(`INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)`)
   const unlink = db.prepare(`DELETE FROM photo_tags WHERE photo_id = ? AND tag_id = ?`)

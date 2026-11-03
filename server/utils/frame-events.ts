@@ -4,10 +4,18 @@ type Stream = ReturnType<typeof createEventStream>
 
 const streams = new Map<string, Set<Stream>>()
 
+// A frame needs one stream; two covers a reconnect overlapping the old one. More would let one
+// stolen device token hold open hundreds of connections and use up nginx's connection limit.
+const MAX_STREAMS_PER_FRAME = 2
+
 export function addFrameStream(deviceId: string, stream: Stream): void {
   const set = streams.get(deviceId) ?? new Set<Stream>()
   set.add(stream)
   streams.set(deviceId, set)
+  for (const old of [...set].slice(0, Math.max(0, set.size - MAX_STREAMS_PER_FRAME))) {
+    set.delete(old)
+    old.close().catch(() => undefined)
+  }
 }
 
 export function removeFrameStream(deviceId: string, stream: Stream): void {

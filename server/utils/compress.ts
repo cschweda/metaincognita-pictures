@@ -1,5 +1,6 @@
 import { stat } from 'node:fs/promises'
 import sharp from 'sharp'
+import { MAX_PIXELS } from './variants'
 
 // Originals above this size are re-encoded. Smaller ones are kept byte for byte.
 export const COMPRESS_OVER_BYTES = 8 * 1024 * 1024
@@ -19,7 +20,7 @@ export async function compressOriginal(inputPath: string, outputPath: string): P
   if (!metadata.format || !COMPRESSIBLE.has(metadata.format) || metadata.hasAlpha) return false
 
   // keepMetadata() leaves the orientation flag in place, so nothing is rotated here.
-  await sharp(inputPath, { sequentialRead: true })
+  await sharp(inputPath, { sequentialRead: true, limitInputPixels: MAX_PIXELS })
     .keepMetadata()
     .jpeg({ quality: JPEG_QUALITY, optimiseCoding: true })
     .toFile(outputPath)

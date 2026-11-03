@@ -10,6 +10,12 @@
 set -Eeuo pipefail
 
 : "${FRAME_URL:?Set FRAME_URL to the address of your OpenMantel server}"
+
+# These values are written into launch files and scripts, so anything but a plain address is refused.
+if [[ ! "$FRAME_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]*)?$ ]]; then
+  echo "FRAME_URL must be a plain address such as https://photos.example.com"
+  exit 1
+fi
 SERVICE=openmantel-frame.service
 OLD_SERVICE=pictures-frame.service
 SERVICE_DIR="$HOME/.config/systemd/user"

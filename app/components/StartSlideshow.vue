@@ -3,7 +3,7 @@
 // slideshow on all frames, one frame, or full screen in this browser.
 const props = defineProps<{ photos: string[], count: number | null, tagName?: string, frames: Frame[], ready: boolean }>()
 const emit = defineEmits<{ started: [] }>()
-const tagFilter = useTagFilter()
+const show = useSlideshowShow()
 const order = useSlideshowOrder()
 const target = useSlideshowTarget()
 const starting = ref(false)
@@ -26,7 +26,7 @@ const detail = computed(() => {
   if (props.count === 0 && memories) return 'No photos from this date yet'
   if (props.count === 0) return props.tagName ? `No photos are tagged ${props.tagName}` : 'Add photos first'
   const photos = `${props.count} ${props.count === 1 ? 'photo' : 'photos'}`
-  const playlist = tagFilter.value.startsWith('playlist:')
+  const playlist = show.value.startsWith('playlist:')
   const how = order.value === 'random' ? 'in random order' : playlist ? 'in playlist order' : 'in your order'
   const where = target.value === 'screen'
     ? ''
@@ -48,7 +48,7 @@ async function startOnFrames() {
     const { started, offline } = await $fetch<{ started: string[], offline: string[] }>('/api/slideshow/start', {
       method: 'POST',
       headers: apiHeaders,
-      body: { frame: target.value, show: tagFilter.value, order: order.value },
+      body: { frame: target.value, show: show.value, order: order.value },
     })
     result.value = [
       started.length ? `Started on ${names(started)}.` : '',
@@ -68,7 +68,7 @@ async function startOnFrames() {
 async function start() {
   if (target.value !== 'screen') return startOnFrames()
   await document.documentElement.requestFullscreen?.().catch(() => undefined)
-  await navigateTo({ path: '/', query: { tag: tagFilter.value || undefined, order: order.value } })
+  await navigateTo({ path: '/', query: { tag: show.value || undefined, order: order.value } })
 }
 </script>
 

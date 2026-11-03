@@ -25,6 +25,8 @@ You have a few ways to give OpenMantel a real HTTPS address at home:
   - Allow request bodies of at least 60 MB.
 - **A private network.** Tailscale can issue certificates for machines on your tailnet, and it keeps OpenMantel off the public internet. Frames must be on the tailnet too.
 - **A tunnel.** Cloudflare Tunnel gives a public HTTPS address with no open ports.
+
+Whatever sits in front, it must set `X-Real-IP` to the real client address, overwriting any value the client sent. OpenMantel believes that header only from a proxy on the same machine or a private network, and uses it for login and pairing limits and for the IP shown when you approve a frame. `cloudflared` and `tailscale serve` don't set it themselves, so put Caddy or nginx between them and the app, or the limits work per proxy rather than per visitor. Keep request bodies small everywhere except `POST /api/photos`, which needs about 1 GB for 20 photos at once; the app refuses other bodies over 64 KB (256 KB for playlists) itself.
 - **A real domain with a DNS challenge.** Point a domain at the private address and use your proxy's DNS challenge support.
 
 Internal certificates work too, as long as every frame and phone trusts your certificate authority.

@@ -2,6 +2,7 @@
 import { db } from '../../db'
 
 const ROTATE_AFTER = '-30 days'
+const PHOTO_ID = /^[0-9A-HJKMNP-TV-Z]{26}$/
 
 function rotateToken(deviceId: string): string | null {
   const due = db.prepare<[string, string], { id: string }>(
@@ -24,7 +25,9 @@ function rotateToken(deviceId: string): string | null {
 export default defineEventHandler(async (event) => {
   const deviceId = event.context.device!.id
   const body = await readBody<{ photo_id?: unknown }>(event)
-  const photoId = typeof body?.photo_id === 'string' ? body.photo_id : null
+  // The admin's browser builds an image address from this, so only a real photo id is kept.
+  const claimed = typeof body?.photo_id === 'string' && PHOTO_ID.test(body.photo_id) ? body.photo_id : null
+  const photoId = claimed && db.prepare(`SELECT 1 FROM photos WHERE id = ?`).get(claimed) ? claimed : null
 
   db.prepare(`UPDATE devices SET last_seen_at = datetime('now'), current_photo_id = ? WHERE id = ?`)
     .run(photoId, deviceId)

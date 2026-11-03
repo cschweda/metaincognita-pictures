@@ -16,9 +16,15 @@ function setSessionCookie(event: H3Event, id: string) {
   })
 }
 
-/** The client IP. Nginx overwrites X-Real-IP; the socket address is the dev fallback. */
+// The proxy (nginx on this machine, or Caddy on the Docker network) connects from loopback or a
+// private address. Anyone else could send any X-Real-IP they like, so it is only believed from those.
+const TRUSTED_PROXY = /^(127\.|::1$|::ffff:127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)|f[cd][0-9a-f]{2}:)/i
+
+/** The client IP: X-Real-IP from a trusted proxy, otherwise the connecting address. */
 export function clientIp(event: H3Event): string {
-  return getHeader(event, 'x-real-ip') || event.node.req.socket.remoteAddress || 'unknown'
+  const peer = event.node.req.socket.remoteAddress ?? ''
+  const forwarded = getHeader(event, 'x-real-ip')
+  return (forwarded && TRUSTED_PROXY.test(peer) ? forwarded : peer) || 'unknown'
 }
 
 export function createSession(event: H3Event): void {

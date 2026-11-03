@@ -7,6 +7,8 @@
 $ErrorActionPreference = 'Stop'
 $url = $env:FRAME_URL
 if (-not $url) { throw 'Set $env:FRAME_URL to the address of your OpenMantel server.' }
+# The address is written into a script that runs at every sign-in, so anything but a plain address is refused.
+if ($url -notmatch '^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]*)?$') { throw 'FRAME_URL must be a plain address such as https://photos.example.com' }
 
 $browsers = @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",

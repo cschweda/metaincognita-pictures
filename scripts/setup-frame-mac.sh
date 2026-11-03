@@ -84,6 +84,18 @@ if [[ -z "$FRAME_URL" ]]; then
   exit 1
 fi
 
+# These values are written into launch files and scripts, so anything but a plain address is refused.
+if [[ ! "$FRAME_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]*)?$ ]]; then
+  echo "FRAME_URL must be a plain address such as https://photos.example.com"
+  exit 1
+fi
+for value in "${SLEEP_START:-}" "${SLEEP_END:-}"; do
+  if [[ -n "$value" && ! "$value" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+    echo "SLEEP_START and SLEEP_END must be times such as 22:30"
+    exit 1
+  fi
+done
+
 if [[ ! -x "$CHROME" ]]; then
   echo "Google Chrome is required. Install it from https://www.google.com/chrome/, then run this again."
   exit 1

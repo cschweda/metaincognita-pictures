@@ -35,6 +35,12 @@ const onlineFrames = ref<Frame[]>([])
 const sentTo = ref('')
 const bulkCaption = ref('')
 const bulkDate = ref('')
+const detailsFor = ref<string | null>(null)
+const detailsOpen = ref(false)
+function showDetails(photo: Photo) {
+  detailsFor.value = photo.id
+  detailsOpen.value = true
+}
 const NEW_PLAYLIST = 'new'
 const playlists = ref<Playlist[]>([])
 const playlistTarget = ref<string>(NEW_PLAYLIST)
@@ -549,6 +555,15 @@ async function remove(photo: Photo) {
           >
             <UIcon name="i-lucide-grip" aria-hidden="true" />
           </button>
+          <button
+            type="button"
+            :aria-label="`Details and metadata for ${photo.filename}`"
+            title="Details and metadata"
+            class="absolute bottom-2 right-2 size-11 grid place-items-center rounded bg-black/70 text-white hover:bg-black/85"
+            @click="showDetails(photo)"
+          >
+            <UIcon name="i-lucide-ellipsis-vertical" class="size-5" aria-hidden="true" />
+          </button>
         </div>
         <UCheckbox
           :model-value="selected.includes(photo.id)"
@@ -598,6 +613,7 @@ async function remove(photo: Photo) {
     <UButton v-if="next" block variant="soft" :loading="loading" @click="next !== null && loadPhotos(next)">
       Load more
     </UButton>
+    <PhotoDetails v-model:open="detailsOpen" :photo-id="detailsFor" />
   </AdminShell>
 </template>
 

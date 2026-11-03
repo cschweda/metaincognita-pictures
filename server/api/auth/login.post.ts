@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const ip = clientIp(event)
-  const wait = takeLoginAttempt(ip)
+  const wait = takeLoginAttempt(ipBucket(ip))
   if (wait > 0) {
     console.warn(`[auth] login rate limited ip=${ip}`)
     setResponseHeader(event, 'Retry-After', Math.ceil(wait / 1000))
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Invalid password' })
   }
 
-  clearLoginAttempts(ip)
+  clearLoginAttempts(ipBucket(ip))
   createSession(event)
   console.log(`[auth] login succeeded ip=${ip}`)
   return { ok: true }

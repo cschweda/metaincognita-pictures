@@ -4,6 +4,7 @@ import { migrated } from '../db'
 export default defineNitroPlugin(() => {
   const timer = setInterval(() => {
     migrated.then(sweepPairings).catch(error => console.error('[pair] sweep failed', error))
+    sweepRateLimits()
   }, 60_000)
   timer.unref()
 })

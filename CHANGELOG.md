@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Photo details: a ⋮ button on each photo in the grid opens its file name, dates, size, tags, playlists, the original's format, file size, compression, colour space and profile, camera and lens settings, location if recorded, and the four frame images with their sizes.
+- Security audits section in the README: the first red/blue team audit, with every finding and its mitigation, kept newest first with earlier audits compressed.
+- A Playlist dropdown beside Show, so Start slideshow plays all photos (the default) or a chosen playlist, with Order and Play on as before.
 - Playlists: named, hand-picked sets of photos in their own order. Drag photos in from the library, drag to reorder, and drag one back out, with tap buttons on phones. Add selected photos from the grid, or start a new playlist from them. A frame shows either its tags or a playlist, in playlist order or shuffled, and playlists appear in the Show dropdown.
 - Start slideshow plays on all frames, one frame, or this screen, and leaves other frames as they are. A remote beside it works the chosen frames.
 - A large Deactivate button on each frame, with an "are you sure" dialog. A deactivated frame goes back to its pairing screen.
@@ -74,6 +77,20 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Security fixes from red/blue team audit 1 (see README):
+  - Request bodies are limited before any route reads them.
+  - The client IP header is believed only from a local or private proxy.
+  - Rate limits sweep themselves and treat each IPv6 /64 as one address.
+  - Frames can hold at most two live connections, report only real photo ids, and can't fetch hidden photos.
+  - Photos over 100 megapixels are refused before decoding, including HEIC files whose header doesn't match the image inside.
+  - Failed uploads leave no temporary files.
+  - Upload and bulk tag changes are limited.
+  - Dot-segment paths are refused.
+  - The database is private to the app user.
+  - Frame setup scripts check their inputs.
+  - Actions are pinned to commits.
+  - `.env.local` can't be committed.
+  - The Docker backup explains a missing `rclone`.
 - Start slideshow says whose setup it replaces, keeps each frame's memories-first setting unless On this day is chosen, and stays disabled until the frame list has loaded. On a frame, On this day is described as all photos with today's first, which is what it shows. The frame list and remote refresh every 30 seconds.
 - A frame catches up on changes it missed while its connection was down, as soon as it reconnects.
 - Editing the playlist or settings a frame is showing no longer sends it back to the first photo, and a slideshow started while a photo was loading can't be overridden by that photo.
