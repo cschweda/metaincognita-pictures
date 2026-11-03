@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Rearrange view: a compact grid where you hold and drag, or tap a photo and tap where it goes. It replaces the drag handle on phones.
 - Captions on or off for each frame.
 - Schedules: a frame can switch to a preset on chosen days and times, using its own clock.
 - Show on a frame: send any photo to an online frame from the grid.

@@ -46,6 +46,10 @@ const problems = ref<string[]>([])
 const announcement = ref('')
 const confirming = ref<string | null>(null)
 const grid = useTemplateRef<HTMLElement>('grid')
+const arrangeGrid = useTemplateRef<HTMLElement>('arrangeGrid')
+const arranging = ref(false)
+const picked = ref<string | null>(null)
+let arrangeSortable: Sortable | undefined
 
 async function openInSlideshow(photo: Photo) {
   await document.documentElement.requestFullscreen?.().catch(() => undefined)
@@ -121,14 +125,50 @@ onMounted(() => {
     forceFallback: true,
     supportPointer: false,
     fallbackTolerance: 3,
-    onEnd({ item, from, oldIndex, newIndex }) {
-      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
-      // Sortable moved the element itself. Put it back so Vue stays in charge of the list.
-      from.insertBefore(item, from.children[oldIndex + (newIndex < oldIndex ? 1 : 0)] ?? null)
-      movePhoto(oldIndex, newIndex)
-    },
+    onEnd: finishDrag,
   } as Sortable.Options) // supportPointer is a real option that the type definitions leave out.
 })
+
+onBeforeUnmount(() => arrangeSortable?.destroy())
+
+function finishDrag({ item, from, oldIndex, newIndex }: Sortable.SortableEvent) {
+  if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
+  // Sortable moved the element itself. Put it back so Vue stays in charge of the list.
+  from.insertBefore(item, from.children[oldIndex + (newIndex < oldIndex ? 1 : 0)] ?? null)
+  movePhoto(oldIndex, newIndex)
+}
+
+// The full cards are too tall to drag between on a phone, so this view shows only thumbnails.
+// Holding before a drag leaves a quick swipe free to scroll the page.
+watch(arranging, async (on) => {
+  picked.value = null
+  arrangeSortable?.destroy()
+  arrangeSortable = undefined
+  if (!on) return
+  await nextTick()
+  if (!arrangeGrid.value) return
+  arrangeSortable = Sortable.create(arrangeGrid.value, {
+    animation: 150,
+    delay: 200,
+    delayOnTouchOnly: true,
+    touchStartThreshold: 8,
+    forceFallback: true,
+    supportPointer: false,
+    fallbackTolerance: 3,
+    onEnd: finishDrag,
+  } as Sortable.Options)
+})
+
+/** Tap a photo, then tap where it goes. This needs no drag gesture at all. */
+function tapToMove(photo: Photo, index: number) {
+  const from = photos.value.findIndex(item => item.id === picked.value)
+  if (from === -1) {
+    picked.value = photo.id
+    return
+  }
+  picked.value = null
+  if (from !== index) movePhoto(from, index)
+}
 
 const tagNames = computed(() => allTags.value.map(tag => tag.name))
 
@@ -324,6 +364,9 @@ async function remove(photo: Photo) {
       <UButton variant="soft" color="neutral" :disabled="busy" @click="arrangeByDate">
         {{ confirmingArrange ? 'Replace my order with dates?' : 'Arrange by date' }}
       </UButton>
+      <UButton variant="soft" color="neutral" :aria-pressed="arranging" @click="arranging = !arranging">
+        Rearrange
+      </UButton>
     </div>
 
     <section
@@ -360,7 +403,36 @@ async function remove(photo: Photo) {
 
     <p v-if="!loading && photos.length === 0" class="text-xl text-muted">No photos here. Add some above.</p>
 
-    <ul ref="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7">
+    <section v-if="arranging" class="flex flex-col gap-3" aria-label="Rearrange photos">
+      <div class="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-lg border border-default bg-default p-3">
+        <p class="text-sm">
+          {{ picked ? 'Now tap where it goes.' : 'Tap a photo, then tap where it goes. Or hold one and drag it.' }}
+        </p>
+        <UButton @click="arranging = false">Done</UButton>
+      </div>
+      <ul ref="arrangeGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
+        <li v-for="(photo, index) in photos" :key="photo.id">
+          <button
+            type="button"
+            class="block w-full cursor-grab rounded select-none [-webkit-touch-callout:none]"
+            :class="{ 'ring-4 ring-primary': picked === photo.id }"
+            :aria-label="picked ? `Move to the place of ${photo.filename}` : `Pick up ${photo.filename}`"
+            :aria-pressed="picked === photo.id"
+            @click="tapToMove(photo, index)"
+          >
+            <img
+              :src="`/v/${photo.id}-640.webp`"
+              alt=""
+              draggable="false"
+              class="pointer-events-none aspect-square w-full object-cover rounded bg-elevated"
+              :class="{ 'opacity-40': photo.hidden }"
+            >
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <ul v-show="!arranging" ref="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7">
       <li v-for="(photo, index) in photos" :key="photo.id" class="flex flex-col gap-2">
         <div class="relative">
           <button
@@ -383,7 +455,7 @@ async function remove(photo: Photo) {
             data-drag-handle
             :aria-label="`Move ${photo.filename}. Use the arrow keys.`"
             title="Drag to rearrange"
-            class="absolute top-2 right-2 size-11 grid place-items-center rounded bg-black/70 text-white cursor-grab active:cursor-grabbing touch-none select-none [-webkit-touch-callout:none]"
+            class="absolute top-2 right-2 size-11 grid pointer-coarse:hidden place-items-center rounded bg-black/70 text-white cursor-grab active:cursor-grabbing touch-none select-none [-webkit-touch-callout:none]"
             @keydown.left.prevent="moveWithKeyboard($event, index)"
             @keydown.up.prevent="moveWithKeyboard($event, index)"
             @keydown.right.prevent="moveWithKeyboard($event, index)"
