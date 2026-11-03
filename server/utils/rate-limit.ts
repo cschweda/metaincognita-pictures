@@ -17,6 +17,16 @@ export function ipBucket(ip: string): string {
   return `${groups.slice(0, 4).map(group => group.replace(/^0+(?=.)/, '')).join(':')}::/64`
 }
 
+/**
+ * A wider neighbourhood, used only during a flood: IPv4 by /24 and IPv6 by /48, the block one
+ * customer usually gets, so rotating through nearby addresses doesn't multiply the guesses.
+ */
+export function prefixBucket(ip: string): string {
+  const address = ip.replace(/^::ffff:(?=\d+\.)/i, '')
+  if (!address.includes(':')) return `${address.split('.').slice(0, 3).join('.')}.0/24`
+  return `${ipBucket(address).split(':').slice(0, 3).join(':')}::/48`
+}
+
 export const LOCK_AFTER_FAILURES = 5
 export const LOCKOUT_MS = 5 * 60_000
 const FORGET_AFTER_MS = 15 * 60_000 // Wrong guesses this old no longer count toward a lockout.
@@ -24,6 +34,10 @@ const FORGET_AFTER_MS = 15 * 60_000 // Wrong guesses this old no longer count to
 // attacker keep the owner out. It cuts each address's tries to one until the flood passes, so a
 // right password on the first try still works.
 const FLOOD = { failures: 20, ms: 60 * 60_000 }
+// During a flood, password checks from addresses that aren't logged in are capped at this many a
+// minute in total. Past it they wait about a minute: a delay at worst, never a lockout.
+const FLOOD_CEILING = { attempts: 30, ms: 60_000 }
+let floodAttempts: number[] = []
 
 const failures = new Map<string, { count: number, last: number, lockedUntil: number }>()
 let recentFailures: number[] = []
@@ -33,10 +47,17 @@ function underFlood(now: number): boolean {
   return recentFailures.length >= FLOOD.failures
 }
 
-/** Milliseconds until this address may try a password again, or 0. */
-export function loginLockout(key: string, now = Date.now()): number {
-  const entry = failures.get(key)
-  return entry && entry.lockedUntil > now ? entry.lockedUntil - now : 0
+/** Milliseconds until this address may try a password again, or 0. During a flood, its /24 or /48 counts too. */
+export function loginLockout(key: string, now = Date.now(), { prefix, trusted = false }: { prefix?: string, trusted?: boolean } = {}): number {
+  const locks = [key, ...(prefix && !trusted && underFlood(now) ? [prefix] : [])]
+    .map(name => failures.get(name))
+    .map(entry => (entry && entry.lockedUntil > now ? entry.lockedUntil - now : 0))
+  let wait = Math.max(0, ...locks)
+  if (!trusted && underFlood(now)) {
+    floodAttempts = floodAttempts.filter(time => now - time < FLOOD_CEILING.ms)
+    if (floodAttempts.length >= FLOOD_CEILING.attempts) wait = Math.max(wait, (floodAttempts[0] ?? now) + FLOOD_CEILING.ms - now)
+  }
+  return wait
 }
 
 /**
@@ -44,20 +65,25 @@ export function loginLockout(key: string, now = Date.now()): number {
  * past the limit while the others are still being checked. A right password gives it back.
  * Returns the tries left after this one, and the lockout it started, if any.
  */
-export function reserveLoginAttempt(key: string, { trusted = false } = {}, now = Date.now()): { triesLeft: number, lockedMs: number, at: number } {
+export function reserveLoginAttempt(key: string, { trusted = false, prefix }: { trusted?: boolean, prefix?: string } = {}, now = Date.now()): { triesLeft: number, lockedMs: number, at: number } {
   const entry = failures.get(key)
   const count = entry && now - entry.last < FORGET_AFTER_MS && entry.lockedUntil <= now ? entry.count + 1 : 1
-  const limit = !trusted && underFlood(now) ? 1 : LOCK_AFTER_FAILURES
+  const flood = !trusted && underFlood(now)
+  const limit = flood ? 1 : LOCK_AFTER_FAILURES
   const locked = count >= limit
   failures.set(key, { count: locked ? 0 : count, last: now, lockedUntil: locked ? now + LOCKOUT_MS : 0 })
+  // During a flood the whole neighbourhood shares this one try, and the attempt counts toward the ceiling.
+  if (flood && prefix) failures.set(prefix, { count: 0, last: now, lockedUntil: now + LOCKOUT_MS })
+  if (flood) floodAttempts.push(now)
   recentFailures.push(now)
   if (failures.size > MAX_KEYS) trim(now)
   return { triesLeft: locked ? 0 : limit - count, lockedMs: locked ? LOCKOUT_MS : 0, at: now }
 }
 
 /** A right password: this address starts again with its full tries, and the attempt is refunded. */
-export function clearLoginAttempts(key: string, at?: number): void {
+export function clearLoginAttempts(key: string, at?: number, prefix?: string): void {
   failures.delete(key)
+  if (prefix) failures.delete(prefix)
   if (at !== undefined) {
     const index = recentFailures.lastIndexOf(at)
     if (index !== -1) recentFailures.splice(index, 1)

@@ -1013,4 +1013,6 @@ test('a flood of wrong passwords from many addresses never locks out the right p
   assert.equal(owner.status, 200, 'the right password works on the first try during a flood')
   const guess = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.51' }, body: JSON.stringify({ password: 'wrong' }) })
   assert.equal(guess.status, 429, 'but a new address gets only one try')
+  const neighbour = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.99' }, body: JSON.stringify({ password: 'wrong' }) })
+  assert.equal(neighbour.status, 429, 'and its /24 shares that one try, so rotating nearby addresses gains nothing')
 })

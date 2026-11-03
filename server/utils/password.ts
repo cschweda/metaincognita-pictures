@@ -9,8 +9,11 @@ import type { H3Event } from 'h3'
 export async function verifyAdminPassword(event: H3Event, password: unknown, purpose = 'login'): Promise<void> {
   const ip = clientIp(event)
   const key = ipBucket(ip)
+  const prefix = prefixBucket(ip)
+  // Someone already logged in, confirming a delete, isn't held to the flood limits.
+  const trusted = Boolean(event.context.admin)
 
-  const locked = loginLockout(key)
+  const locked = loginLockout(key, Date.now(), { prefix, trusted })
   if (locked > 0) {
     setResponseHeader(event, 'Retry-After', Math.ceil(locked / 1000))
     throw createError({ statusCode: 429, statusMessage: lockoutMessage(locked) })
@@ -22,15 +25,14 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
     throw createError({ statusCode: 500, statusMessage: 'Login is not configured' })
   }
 
-  // Counted before checking, and refunded if right. A caller who is already logged in, confirming
-  // a delete, isn't held to the tighter limit during a flood of wrong guesses from elsewhere.
-  const attempt = reserveLoginAttempt(key, { trusted: Boolean(event.context.admin) })
+  // Counted before checking, and refunded if right.
+  const attempt = reserveLoginAttempt(key, { trusted, prefix })
 
   // Bounded so an oversized password can't be used to waste hashing time.
   const text = typeof password === 'string' ? password : ''
   const valid = text.length > 0 && text.length <= 1024 && await argon2.verify(adminPasswordHash, text)
   if (valid) {
-    clearLoginAttempts(key, attempt.at)
+    clearLoginAttempts(key, attempt.at, prefix)
     return
   }
 
