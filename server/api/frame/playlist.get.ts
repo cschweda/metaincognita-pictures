@@ -1,7 +1,7 @@
 // Role: device, or admin for a slideshow in their own browser. Visible photos, in order and paged.
 import { createHash } from 'node:crypto'
 import { db } from '../../db'
-import type { Photo } from '../../types'
+import type { Device, Photo, Preset } from '../../types'
 import { MEMORIES_FILTER, MEMORIES_SQL } from '../../utils/filters'
 
 type Entry = Pick<Photo, 'id' | 'caption'> & { memory?: number | null }
@@ -32,6 +32,13 @@ function shuffled(entries: Entry[], seed: string): Entry[] {
   return result
 }
 
+// Only a frame knows its local time, so it says when its schedule applies. It can only pick the
+// preset the admin chose, and with no preset it gets its normal filter.
+function scheduledFilter(device: Device, scheduled: unknown): string | undefined {
+  if (scheduled !== '1' || !device.schedule_preset_id) return undefined
+  return db.prepare<[string], Preset>(`SELECT * FROM presets WHERE id = ?`).get(device.schedule_preset_id)?.filter
+}
+
 export default defineEventHandler((event) => {
   const device = event.context.device
   const query = getQuery(event)
@@ -42,7 +49,7 @@ export default defineEventHandler((event) => {
 
   const clause = tag === MEMORIES_FILTER
     ? { sql: MEMORIES_SQL, params: [] }
-    : filterClause(device ? parseFilter(device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+    : filterClause(device ? parseFilter(scheduledFilter(device, query.scheduled) ?? device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
 
   // A square photo suits any screen. Only clear mismatches are skipped.
   let shapeSql = ''

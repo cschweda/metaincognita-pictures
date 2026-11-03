@@ -9,7 +9,7 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) suite of si
 ## What it does
 
 - **Pairs like a Roku.** A frame shows a code, you enter it on your phone, and it never asks again. Frames need no keyboard and no password.
-- **Runs from your phone.** Skip, go back, pause, or send a photo to any frame like a remote, and change what it shows, its matte color, timing, and sleep hours. Frames update instantly. Add the admin to your home screen and it opens like an app.
+- **Runs from your phone.** Skip, go back, pause, or send a photo to any frame like a remote, and change what it shows, its matte color, timing, sleep hours, and a schedule for showing a preset on certain days. Frames update instantly. Add the admin to your home screen and it opens like an app.
 - **Never crops.** Portrait, square, and panoramic photos all show in full, on a matte or a blurred backdrop, with optional captions.
 - **Organizes by tag.** Upload in batches, tag photos, drag them into order, save presets like "Holidays", and search by name or caption.
 - **Brings back memories.** Show photos from today's date in past years, on a frame or in a slideshow.

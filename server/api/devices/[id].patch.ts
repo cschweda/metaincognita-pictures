@@ -37,18 +37,28 @@ export default defineEventHandler(async (event) => {
     if (body.backdrop !== 'solid' && body.backdrop !== 'blur') bad('Invalid backdrop')
     changes.backdrop = body.backdrop
   }
-  for (const key of ['match_shape', 'memories_first']) {
+  for (const key of ['match_shape', 'memories_first', 'show_captions']) {
     if (key in body) {
       if (typeof body[key] !== 'boolean') bad(`${key} must be true or false`)
       changes[key] = body[key] ? 1 : 0
     }
   }
-  for (const key of ['sleep_start', 'sleep_end']) {
+  for (const key of ['sleep_start', 'sleep_end', 'schedule_start', 'schedule_end']) {
     if (key in body) {
       const value = body[key]
-      if (value !== null && (typeof value !== 'string' || !TIME.test(value))) bad('Sleep times must be HH:MM')
+      if (value !== null && (typeof value !== 'string' || !TIME.test(value))) bad('Times must be HH:MM')
       changes[key] = value as string | null
     }
+  }
+  if ('schedule_preset_id' in body) {
+    const preset = body.schedule_preset_id
+    if (preset !== null && (typeof preset !== 'string' || !db.prepare(`SELECT 1 FROM presets WHERE id = ?`).get(preset))) bad('Preset not found')
+    changes.schedule_preset_id = preset as string | null
+  }
+  if ('schedule_days' in body) {
+    const days = body.schedule_days
+    if (!Array.isArray(days) || !days.every(day => Number.isInteger(day) && day >= 0 && day <= 6)) bad('Days must be 0 to 6')
+    changes.schedule_days = JSON.stringify([...new Set(days as number[])].sort())
   }
 
   const columns = Object.keys(changes)

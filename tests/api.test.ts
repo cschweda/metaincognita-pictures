@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 import argon2 from 'argon2'
 import sharp from 'sharp'
+import { inSchedule } from '../app/utils/schedule'
 
 const PORT = 3197
 const BASE = `http://127.0.0.1:${PORT}`
@@ -266,6 +267,60 @@ test('memories come first on their date, and dates can be edited', async () => {
   await adminJson(`/api/devices/${id}`, 'PATCH', { memories_first: true, sort: 'uploaded_at' })
   const list = await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie } })).json()
   assert.equal(list.photos[0].id, photo.id)
+})
+
+test('captions can be turned off for a frame, and a schedule switches to its preset', async () => {
+  const { photo: red } = await upload('#a01010', 'plain.jpg')
+  const { photo: tagged } = await upload('#10a010', 'holiday.jpg', 'scheduled')
+  const { cookie } = await pairDevice('Scheduled')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Scheduled')
+  const device = { headers: { cookie } }
+  const ids = async (query = '') =>
+    (await (await fetch(`${BASE}/api/frame/playlist${query}`, device)).json()).photos.map((p: { id: string }) => p.id)
+  const config = async () => (await fetch(`${BASE}/api/frame/config`, device)).json()
+
+  assert.equal((await config()).show_captions, true)
+  await adminJson(`/api/devices/${id}`, 'PATCH', { show_captions: false })
+  assert.equal((await config()).show_captions, false)
+
+  const { tags } = await (await adminFetch('/api/tags')).json()
+  const tag = tags.find((item: { name: string }) => item.name === 'scheduled')
+  const { preset } = await (await adminJson('/api/presets', 'POST', { name: 'Weekends', filter: { tags: [tag.id], mode: 'any' } })).json()
+
+  // Without a preset, the flag changes nothing.
+  assert.ok((await ids('?scheduled=1')).includes(red.id))
+  assert.equal((await adminJson(`/api/devices/${id}`, 'PATCH', { schedule_preset_id: 'nope' })).status, 400)
+  assert.equal((await adminJson(`/api/devices/${id}`, 'PATCH', { schedule_days: [7] })).status, 400)
+  assert.equal((await adminJson(`/api/devices/${id}`, 'PATCH', { schedule_start: '25:00' })).status, 400)
+
+  const saved = await adminJson(`/api/devices/${id}`, 'PATCH', { schedule_preset_id: preset.id, schedule_days: [6, 0, 6], schedule_start: '09:00', schedule_end: '17:00' })
+  assert.equal(saved.status, 200)
+  assert.deepEqual((await config()).schedule, { days: [0, 6], start: '09:00', end: '17:00' })
+  assert.deepEqual(await ids('?scheduled=1'), [tagged.id])
+  assert.ok((await ids()).includes(red.id))
+
+  // A deleted preset ends the schedule, and the frame goes back to its normal filter.
+  await adminFetch(`/api/presets/${preset.id}`, { method: 'DELETE', headers: CSRF })
+  assert.equal((await config()).schedule, null)
+  assert.ok((await ids('?scheduled=1')).includes(red.id))
+})
+
+test('a schedule follows days, hours, and windows that cross midnight', () => {
+  const at = (day: number, time: string) => new Date(`2026-11-0${day + 1}T${time}:00`) // Nov 1, 2026 is a Sunday.
+  assert.equal(inSchedule(null, at(0, '12:00')), false)
+  assert.equal(inSchedule({ days: [], start: null, end: null }, at(3, '12:00')), true)
+
+  const weekends = { days: [0, 6], start: '09:00', end: '17:00' }
+  assert.equal(inSchedule(weekends, at(6, '09:00')), true)
+  assert.equal(inSchedule(weekends, at(6, '17:00')), false)
+  assert.equal(inSchedule(weekends, at(1, '12:00')), false)
+
+  const fridayNight = { days: [5], start: '22:00', end: '02:00' }
+  assert.equal(inSchedule(fridayNight, at(5, '23:00')), true)
+  assert.equal(inSchedule(fridayNight, at(6, '01:00')), true)
+  assert.equal(inSchedule(fridayNight, at(5, '01:00')), false)
+  assert.equal(inSchedule(fridayNight, at(6, '23:00')), false)
 })
 
 test('the library can be arranged by date and exported', async () => {

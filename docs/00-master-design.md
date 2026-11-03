@@ -322,12 +322,11 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 | 7 | Recover from losing the server | DO server backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
 | 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
 | 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | Done |
-| 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Portrait skipping and monitor off done; the other two not started |
+| 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Done |
 | 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because server backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | HEIC testing done: 27 seconds per photo on the 1 GB droplet. The rest isn't needed yet |
 | 12 | Family can add photos (optional) | Multiple users and passkeys. Changes the one-user security design | Not started; owner decides |
 
 ## 12. Open questions
 
 - One admin user hard-coded, or a `users` table from the start? (Leaning: one user in `.env`, add table only if you ever share it.)
-- Scheduled filters ("Holidays" on weekends, "Everything" otherwise): same row shape as the sleep window; defer until a frame has been on the wall a month.
 - Variant sizes: are any frames going to be portrait? If so, generate variants by longest edge (as planned) and let `contain` handle it — no separate portrait set needed.

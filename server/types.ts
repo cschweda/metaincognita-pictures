@@ -47,6 +47,11 @@ export interface Device {
   current_photo_id: string | null
   match_shape: number
   memories_first: number
+  show_captions: number
+  schedule_preset_id: string | null
+  schedule_days: string
+  schedule_start: string | null
+  schedule_end: string | null
 }
 
 export interface Pairing {

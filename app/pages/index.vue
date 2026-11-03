@@ -7,6 +7,8 @@ interface Config {
   backdrop: string
   sleep_start: string | null
   sleep_end: string | null
+  show_captions: boolean
+  schedule: FrameSchedule | null
   variant: number
 }
 interface Entry {
@@ -50,6 +52,7 @@ let serviceWorker: ServiceWorker | null = null
 let reloadTimer: ReturnType<typeof setTimeout> | undefined
 let failures = 0
 let paused = false
+let scheduled = false
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
@@ -65,13 +68,17 @@ const route = useRoute()
 const previewSeed = String(Math.random())
 let firstPhoto = route.query.photo // Only the first load opens on the clicked photo.
 
-async function fetchPage(after?: string) {
-  const preview = config.value?.preview ? { tag: route.query.tag, seed: previewSeed, first: firstPhoto } : {}
-  return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, ...preview } })
+async function fetchPage(after?: string, useSchedule = scheduled) {
+  const options = config.value?.preview
+    ? { tag: route.query.tag, seed: previewSeed, first: firstPhoto }
+    : { scheduled: useSchedule ? 1 : undefined }
+  return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, ...options } })
 }
 
 async function reloadPlaylist() {
-  const page = await fetchPage()
+  const useSchedule = inSchedule(config.value?.schedule, new Date())
+  const page = await fetchPage(undefined, useSchedule)
+  scheduled = useSchedule
   firstPhoto = undefined
   entries = page.photos
   nextPage = page.next
@@ -159,6 +166,18 @@ async function advance() {
   if (!paused) schedule((config.value?.interval_sec ?? 30) * 1000)
 }
 
+/** The next slide can be 30 minutes away, so the frame checks for a change on its own. */
+async function followSchedule() {
+  if (inSchedule(config.value?.schedule, new Date()) === scheduled) return
+  try {
+    await reloadPlaylist()
+    if (!paused && !empty.value) schedule(0) // Shown right away, or a long interval would hide the change.
+  }
+  catch {
+    // Offline. The next heartbeat tries again.
+  }
+}
+
 async function loadConfig() {
   config.value = await $fetch<Config>('/api/frame/config')
 }
@@ -204,6 +223,7 @@ function listen() {
     loadConfig().then(() => {
       if (sleeping.value && !inSleepWindow()) schedule(0)
       else if (inSleepWindow()) sleeping.value = true
+      return followSchedule()
     }).catch(() => undefined)
   })
   events.addEventListener('reload', () => location.reload())
@@ -275,7 +295,10 @@ onMounted(async () => {
   listen()
   startCache().catch(() => undefined)
   beat()
-  heartbeat = setInterval(beat, HEARTBEAT_MS)
+  heartbeat = setInterval(() => {
+    beat()
+    followSchedule()
+  }, HEARTBEAT_MS)
   reloadTimer = setTimeout(() => location.reload(), RELOAD_MS)
   window.addEventListener('offline', beat)
   window.addEventListener('online', beat)
@@ -307,7 +330,7 @@ onBeforeUnmount(() => {
       <div class="slide" :class="{ visible: active === index && slide.src }">
         <img v-if="slide.backdrop" :src="slide.backdrop" alt="" class="backdrop">
         <img v-if="slide.src" :src="slide.src" alt="" class="photo">
-        <p v-if="slide.caption" class="caption">{{ slide.caption }}</p>
+        <p v-if="slide.caption && config?.show_captions !== false" class="caption">{{ slide.caption }}</p>
       </div>
     </template>
     <p v-if="empty" class="caption">No photos to show</p>

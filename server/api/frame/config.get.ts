@@ -11,6 +11,8 @@ export default defineEventHandler((event) => {
       backdrop: 'solid',
       sleep_start: null,
       sleep_end: null,
+      show_captions: true,
+      schedule: null,
       variant: 1920,
     }
   }
@@ -26,6 +28,10 @@ export default defineEventHandler((event) => {
     backdrop: device.backdrop,
     sleep_start: device.sleep_start,
     sleep_end: device.sleep_end,
+    show_captions: device.show_captions === 1,
+    schedule: device.schedule_preset_id
+      ? { days: JSON.parse(device.schedule_days), start: device.schedule_start, end: device.schedule_end }
+      : null,
     variant,
   }
 })

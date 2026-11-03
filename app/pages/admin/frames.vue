@@ -57,7 +57,7 @@ function removed(id: string) {
         :presets="presets"
         @updated="updated"
         @removed="removed"
-        @presets-changed="loadPresets"
+        @presets-changed="loadFrames(); loadPresets()"
       />
     </ul>
   </AdminShell>

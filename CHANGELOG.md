@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Captions on or off for each frame.
+- Schedules: a frame can switch to a preset on chosen days and times, using its own clock.
 - Show on a frame: send any photo to an online frame from the grid.
 - Monitor off overnight on Macs, with `SLEEP_START` and `SLEEP_END`.
 - Option to skip photos that don't suit a frame's screen shape.

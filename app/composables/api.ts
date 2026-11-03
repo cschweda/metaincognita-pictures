@@ -37,6 +37,11 @@ export interface Frame {
   dormant: boolean
   match_shape: boolean
   memories_first: boolean
+  show_captions: boolean
+  schedule_preset_id: string | null
+  schedule_days: number[]
+  schedule_start: string | null
+  schedule_end: string | null
 }
 
 /** Finds or creates tags by name, and returns their ids. */

@@ -23,6 +23,16 @@ const SORTS = [
   { label: 'Date uploaded', value: 'uploaded_at' },
 ]
 
+const DAYS = [
+  { short: 'S', name: 'Sunday' },
+  { short: 'M', name: 'Monday' },
+  { short: 'T', name: 'Tuesday' },
+  { short: 'W', name: 'Wednesday' },
+  { short: 'T', name: 'Thursday' },
+  { short: 'F', name: 'Friday' },
+  { short: 'S', name: 'Saturday' },
+]
+
 const expanded = ref(false)
 const error = ref('')
 const presetName = ref('')
@@ -107,6 +117,15 @@ function rename(event: Event) {
 }
 
 const sleepValue = (value: string) => value || null
+const presetChoices = computed(() => [
+  { label: 'Off', value: 'off' },
+  ...props.presets.map(preset => ({ label: preset.name, value: preset.id })),
+])
+
+function toggleDay(day: number) {
+  const days = props.frame.schedule_days
+  save({ schedule_days: days.includes(day) ? days.filter(item => item !== day) : [...days, day] })
+}
 </script>
 
 <template>
@@ -236,6 +255,12 @@ const sleepValue = (value: string) => value || null
         label="Show photos from this date in past years first"
         @update:model-value="save({ memories_first: $event === true })"
       />
+      <UCheckbox
+        :model-value="frame.show_captions"
+        :name="`captions-${frame.id}`"
+        label="Show captions"
+        @update:model-value="save({ show_captions: $event === true })"
+      />
     </div>
 
     <UButton size="sm" variant="ghost" color="neutral" class="self-start" :aria-expanded="expanded" @click="expanded = !expanded">
@@ -281,6 +306,59 @@ const sleepValue = (value: string) => value || null
             @change="save({ sleep_end: sleepValue(($event.target as HTMLInputElement).value) })"
           />
         </UFormField>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <h3 class="text-xl font-bold">Schedule</h3>
+        <p v-if="!presets.length" class="text-sm text-muted">Save a preset below, then choose when this frame shows it.</p>
+        <template v-else>
+          <UFormField label="Switch to this preset">
+            <USelect
+              :model-value="frame.schedule_preset_id ?? 'off'"
+              :items="presetChoices"
+              class="w-full"
+              @update:model-value="save({ schedule_preset_id: $event === 'off' ? null : String($event) })"
+            />
+          </UFormField>
+          <template v-if="frame.schedule_preset_id">
+            <div class="flex flex-wrap gap-1" role="group" aria-label="Days">
+              <UButton
+                v-for="(day, index) in DAYS"
+                :key="day.name"
+                size="sm"
+                color="neutral"
+                :variant="frame.schedule_days.includes(index) ? 'solid' : 'soft'"
+                :aria-label="day.name"
+                :aria-pressed="frame.schedule_days.includes(index)"
+                class="size-9 justify-center"
+                @click="toggleDay(index)"
+              >
+                {{ day.short }}
+              </UButton>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField label="From" help="Frame's local time">
+                <UInput
+                  type="time"
+                  :model-value="frame.schedule_start ?? ''"
+                  :name="`schedule-start-${frame.id}`"
+                  class="w-full"
+                  @change="save({ schedule_start: sleepValue(($event.target as HTMLInputElement).value) })"
+                />
+              </UFormField>
+              <UFormField label="Until">
+                <UInput
+                  type="time"
+                  :model-value="frame.schedule_end ?? ''"
+                  :name="`schedule-end-${frame.id}`"
+                  class="w-full"
+                  @change="save({ schedule_end: sleepValue(($event.target as HTMLInputElement).value) })"
+                />
+              </UFormField>
+            </div>
+            <p class="text-sm text-muted">With no days picked, it runs every day. With no times, it runs all day.</p>
+          </template>
+        </template>
       </div>
 
       <form class="flex items-end gap-2" @submit.prevent="savePreset">
