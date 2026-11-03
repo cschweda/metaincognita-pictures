@@ -1013,6 +1013,21 @@ test('a flood of wrong passwords from many addresses never locks out the right p
   assert.equal(owner.status, 200, 'the right password works on the first try during a flood')
   const guess = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.51' }, body: JSON.stringify({ password: 'wrong' }) })
   assert.equal(guess.status, 429, 'but a new address gets only one try')
-  const neighbour = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.99' }, body: JSON.stringify({ password: 'wrong' }) })
-  assert.equal(neighbour.status, 429, 'and its /24 shares that one try, so rotating nearby addresses gains nothing')
+  // Rotating through one neighbourhood: after three wrong passwords from a /24, the rest of it waits.
+  for (const last of [60, 61]) {
+    await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': `192.0.2.${last}` }, body: JSON.stringify({ password: 'wrong' }) })
+  }
+  const neighbour = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.99' }, body: JSON.stringify({ password: PASSWORD }) })
+  assert.equal(neighbour.status, 429, 'the neighbourhood is locked after three wrong passwords from it')
+
+  // Past the flood ceiling, an unknown browser waits, but one that has logged in before gets straight in.
+  for (let i = 0; i < 30; i++) {
+    await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': `198.18.${i}.1` }, body: JSON.stringify({ password: 'wrong' }) })
+  }
+  const stranger = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '198.19.0.1' }, body: JSON.stringify({ password: PASSWORD }) })
+  assert.equal(stranger.status, 429, 'an unknown browser waits out the ceiling')
+  const known = admin.split('; ').find(part => part.startsWith('known_browser='))
+  assert.ok(known, 'logging in remembers the browser')
+  const returning = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '198.19.0.2', cookie: known! }, body: JSON.stringify({ password: PASSWORD }) })
+  assert.equal(returning.status, 200, 'a remembered browser is never held up by the flood')
 })

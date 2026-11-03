@@ -37,6 +37,7 @@ const FLOOD = { failures: 20, ms: 60 * 60_000 }
 // During a flood, password checks from addresses that aren't logged in are capped at this many a
 // minute in total. Past it they wait about a minute: a delay at worst, never a lockout.
 const FLOOD_CEILING = { attempts: 30, ms: 60_000 }
+const PREFIX_LOCK_AFTER = 3
 let floodAttempts: number[] = []
 
 const failures = new Map<string, { count: number, last: number, lockedUntil: number }>()
@@ -72,8 +73,14 @@ export function reserveLoginAttempt(key: string, { trusted = false, prefix }: { 
   const limit = flood ? 1 : LOCK_AFTER_FAILURES
   const locked = count >= limit
   failures.set(key, { count: locked ? 0 : count, last: now, lockedUntil: locked ? now + LOCKOUT_MS : 0 })
-  // During a flood the whole neighbourhood shares this one try, and the attempt counts toward the ceiling.
-  if (flood && prefix) failures.set(prefix, { count: 0, last: now, lockedUntil: now + LOCKOUT_MS })
+  // During a flood a neighbourhood is locked after a few wrong passwords from it, and the attempt
+  // counts toward the ceiling.
+  if (flood && prefix) {
+    const near = failures.get(prefix)
+    const nearCount = near && now - near.last < FORGET_AFTER_MS && near.lockedUntil <= now ? near.count + 1 : 1
+    const nearLocked = nearCount >= PREFIX_LOCK_AFTER
+    failures.set(prefix, { count: nearLocked ? 0 : nearCount, last: now, lockedUntil: nearLocked ? now + LOCKOUT_MS : 0 })
+  }
   if (flood) floodAttempts.push(now)
   recentFailures.push(now)
   if (failures.size > MAX_KEYS) trim(now)

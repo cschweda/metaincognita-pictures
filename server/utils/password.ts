@@ -1,5 +1,28 @@
 import argon2 from 'argon2'
 import type { H3Event } from 'h3'
+import { db } from '../db'
+
+const KNOWN_COOKIE = 'known_browser'
+const KNOWN_MAX_AGE = 400 * 24 * 60 * 60 // The longest a browser keeps a cookie.
+
+/** True when this browser carries the cookie from an earlier successful login. */
+export function isKnownBrowser(event: H3Event): boolean {
+  const token = getCookie(event, KNOWN_COOKIE)
+  if (!token) return false
+  const hash = sha256(token)
+  const found = db.prepare(`UPDATE known_browsers SET last_used = datetime('now') WHERE hash = ?`).run(hash).changes > 0
+  return found
+}
+
+/** After a successful login, remembers this browser. Only the hash is stored. */
+export function rememberBrowser(event: H3Event): void {
+  if (isKnownBrowser(event)) return
+  const token = randomToken()
+  db.prepare(`INSERT INTO known_browsers (hash) VALUES (?)`).run(sha256(token))
+  // Browsers not used for a year are forgotten.
+  db.prepare(`DELETE FROM known_browsers WHERE last_used < datetime('now', '-400 days')`).run()
+  setCookie(event, KNOWN_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: KNOWN_MAX_AGE })
+}
 
 /**
  * Checks the admin password for login and for the guarded deletes. While this address is locked
@@ -10,8 +33,9 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
   const ip = clientIp(event)
   const key = ipBucket(ip)
   const prefix = prefixBucket(ip)
-  // Someone already logged in, confirming a delete, isn't held to the flood limits.
-  const trusted = Boolean(event.context.admin)
+  // Someone already logged in, or on a browser that has logged in before, isn't held to the flood
+  // limits, so a flood of guesses from elsewhere can't keep the owner out.
+  const trusted = Boolean(event.context.admin) || isKnownBrowser(event)
 
   const locked = loginLockout(key, Date.now(), { prefix, trusted })
   if (locked > 0) {

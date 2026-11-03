@@ -90,7 +90,7 @@ All notable changes to this project are documented here. The format is based on 
 
 - The Frames page thumbnail follows the frame's photo within seconds: frames report every photo change, pause, and resume, and the page refreshes every 5 seconds while it's open.
 - New photos play next on frames that include them, instead of waiting for their turn, and a deleted or hidden photo leaves the screen at once. Regenerating the demo now shows on frames within a couple of seconds.
-- The login lockout counts an attempt before checking the password, so guesses sent all at once can't slip past it, and a flood of wrong guesses from many addresses cuts new addresses to one try, shared with their /24 or /48, under a ceiling of 30 attempts a minute, instead of locking out the owner.
+- The login lockout counts an attempt before checking the password, so guesses sent all at once can't slip past it, and a flood of wrong guesses from many addresses limits unknown browsers (one try per address, a /24 or /48 locked after three, at most 30 attempts a minute) while browsers that have logged in before skip those limits, so the owner is never locked out.
 - Five wrong passwords lock that address out of logging in for five minutes. Each wrong try says how many are left, and the login button counts the lockout down. Other addresses can still log in, so nobody can lock the owner out. Start over, bulk delete, and demo removal share the same check and lockout.
 - Frame captions are smaller, about 28 px on a 1080p screen, in a Helvetica-like sans-serif from the system.
 - An unpaired screen goes straight to pairing without any refused requests, so the browser console stays clean, and the login form has a hidden username field for password managers.
