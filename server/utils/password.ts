@@ -37,6 +37,20 @@ export function forgetAllBrowsers(): number {
   return db.prepare(`DELETE FROM known_browsers`).run().changes
 }
 
+const CODE_CAP = 10
+const CODE_CAP_MS = 60 * 60_000
+const wrongCodes: number[] = []
+
+/** How long until another code may be checked, once ten wrong ones have come in within an hour. */
+function codeCapWait(now = Date.now()): number {
+  while (wrongCodes.length && now - wrongCodes[0]! >= CODE_CAP_MS) wrongCodes.shift()
+  return wrongCodes.length >= CODE_CAP ? wrongCodes[0]! + CODE_CAP_MS - now : 0
+}
+function noteWrongCode(now = Date.now()): void {
+  wrongCodes.push(now)
+  if (wrongCodes.length > CODE_CAP) wrongCodes.shift()
+}
+
 /**
  * Checks the admin password for login and for the guarded deletes. While this address is locked
  * out it refuses without checking. A wrong password counts toward the lockout and says how many
@@ -55,24 +69,39 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
 }
 
 /**
- * Runs one guess, a password or a two-factor code, under the login lockout. Every guess counts
- * toward the same five tries, so knowing the password doesn't buy extra guesses at the code.
+ * Runs one guess, a password or a two-factor code, under the login lockout: five tries per
+ * address and per remembered browser, then five minutes' wait. Codes are counted apart from
+ * passwords, and only a right code clears their count.
  */
 export async function checkWithLockout(event: H3Event, purpose: string, what: 'password' | 'code', check: () => boolean | Promise<boolean>): Promise<void> {
+  // Codes keep their own count, which a right password doesn't reset. Otherwise someone with the
+  // password could guess four codes, log in with the password again, and keep going.
+  const scope = what === 'code' ? 'code:' : ''
   const ip = clientIp(event)
-  const key = ipBucket(ip)
-  const prefix = prefixBucket(ip)
+  const key = scope + ipBucket(ip)
+  const prefix = scope + prefixBucket(ip)
   // Someone already logged in, or on a browser that has logged in before, isn't held to the flood
   // limits, so a flood of guesses from elsewhere can't keep the owner out. A known browser's
   // cookie has five tries of its own, wherever it's used from, so a leaked one can't multiply guesses.
-  const known = knownBrowserKey(event)
+  const knownKey = knownBrowserKey(event)
+  const known = knownKey ? scope + knownKey : null
   const trusted = Boolean(event.context.admin) || Boolean(known)
+
+  // However many addresses they come from, only ten wrong codes an hour are checked in all.
+  if (what === 'code') {
+    const wait = codeCapWait()
+    if (wait > 0) {
+      logEvent(event, 'warn', 'security', `Too many wrong two-factor codes this hour; refused (${purpose})`)
+      setResponseHeader(event, 'Retry-After', Math.ceil(wait / 1000))
+      throw createError({ statusCode: 429, statusMessage: lockoutMessage(wait, 'codes') })
+    }
+  }
 
   const locked = Math.max(loginLockout(key, Date.now(), { prefix, trusted }), known ? loginLockout(known, Date.now(), { trusted: true }) : 0)
   if (locked > 0) {
     logEvent(event, 'warn', 'login', `Refused while locked out (${purpose})`)
     setResponseHeader(event, 'Retry-After', Math.ceil(locked / 1000))
-    throw createError({ statusCode: 429, statusMessage: lockoutMessage(locked) })
+    throw createError({ statusCode: 429, statusMessage: lockoutMessage(locked, `${what}s`) })
   }
 
   // Counted before checking, and refunded if right.
@@ -85,6 +114,7 @@ export async function checkWithLockout(event: H3Event, purpose: string, what: 'p
     return
   }
 
+  if (what === 'code') noteWrongCode()
   if (tokenAttempt && tokenAttempt.lockedMs > attempt.lockedMs) {
     attempt.lockedMs = tokenAttempt.lockedMs
     attempt.triesLeft = 0
@@ -92,7 +122,7 @@ export async function checkWithLockout(event: H3Event, purpose: string, what: 'p
   if (attempt.lockedMs > 0) {
     logEvent(event, 'warn', 'login', `Locked out for 5 minutes after wrong ${what}s (${purpose})`)
     setResponseHeader(event, 'Retry-After', Math.ceil(attempt.lockedMs / 1000))
-    throw createError({ statusCode: 429, statusMessage: lockoutMessage(attempt.lockedMs) })
+    throw createError({ statusCode: 429, statusMessage: lockoutMessage(attempt.lockedMs, `${what}s`) })
   }
   const tries = `${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'}`
   logEvent(event, 'warn', 'login', `Wrong ${what} (${purpose}), ${tries} left`)

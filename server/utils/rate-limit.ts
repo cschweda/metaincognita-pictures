@@ -98,10 +98,10 @@ export function clearLoginAttempts(key: string, at?: number, prefix?: string): v
 }
 
 /** The message for a locked-out caller, with the time left in whole minutes or seconds. */
-export function lockoutMessage(ms: number): string {
+export function lockoutMessage(ms: number, what: 'passwords' | 'codes' = 'passwords'): string {
   const seconds = Math.ceil(ms / 1000)
   const wait = seconds > 60 ? `${Math.ceil(seconds / 60)} minutes` : `${seconds} seconds`
-  return `Too many wrong passwords. Try again in ${wait}.`
+  return `Too many wrong ${what}. Try again in ${wait}.`
 }
 
 const hits = new Map<string, number[]>()

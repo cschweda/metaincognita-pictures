@@ -1109,10 +1109,20 @@ test('two-factor login is off by default, and once on needs the code after the p
   assert.equal((await code(third, recovery[0])).status, 401, 'a recovery code works only once')
   assert.equal((await adminFetch('/api/security').then(r => r.json())).recovery_codes_left, 9)
 
-  // Turning it off needs the password and a code.
-  assert.equal((await adminJson('/api/security/two-factor/disable', 'POST', { password: PASSWORD, code: '' })).status, 401)
+  // Five wrong codes lock out, and entering the right password again doesn't reset that.
+  // The used recovery code above was one wrong code; three more on this ticket, and a fifth on a new one.
+  for (let i = 0; i < 3; i++) assert.equal((await code(third, '000000')).status, 401)
+  assert.equal((await code(ticketFrom(await login(PASSWORD)), '000000')).status, 429, 'the fifth wrong code locks out')
+  assert.deepEqual(await (await login(PASSWORD)).json(), { code_needed: true }, 'the password is still accepted')
+  const fourth = ticketFrom(await login(PASSWORD))
+  assert.equal((await code(fourth, recovery[2])).status, 429, 'but codes stay locked out, even a right one')
+
+  // Turning it off needs the password and a code. (From the admin session alone, as this browser's codes are locked out.)
+  const sessionOnly = admin.split('; ').filter(part => part.startsWith('admin_session=')).join('; ')
+  const disable = (body: unknown) => fetch(`${BASE}/api/security/two-factor/disable`, { method: 'POST', headers: { ...JSON_BODY, cookie: sessionOnly }, body: JSON.stringify(body) })
+  assert.equal((await disable({ password: PASSWORD, code: '' })).status, 401)
   assert.equal((await adminFetch('/api/security').then(r => r.json())).two_factor, true)
-  assert.equal((await adminJson('/api/security/two-factor/disable', 'POST', { password: PASSWORD, code: recovery[1] })).status, 200)
+  assert.equal((await disable({ password: PASSWORD, code: recovery[1] })).status, 200)
   assert.deepEqual(await (await login(PASSWORD)).json(), { ok: true }, 'the password alone logs in again')
 
   const messages = (await (await adminFetch('/api/events?kind=security')).json()).events.map((e: { message: string }) => e.message)

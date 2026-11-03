@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
-- Optional two-factor login, off by default. Turn it on from Security, under More, with your password, a QR code for Google Authenticator or any authenticator app, and one code to confirm. Ten one-time recovery codes are shown once. Logging in then asks for the 6-digit code after the password, and wrong codes count toward the same lockout. Turning it off needs the password and a code. `pnpm security:reset-2fa` turns it off from the server if the phone and codes are both lost.
+- Optional two-factor login, off by default. Turn it on from Security, under More, with your password, a QR code for Google Authenticator or any authenticator app, and one code to confirm. Ten one-time recovery codes are shown once. Logging in then asks for the 6-digit code after the password, and five wrong codes lock out for five minutes, with no more than ten wrong codes an hour checked in all. Turning it off needs the password and a code. `pnpm security:reset-2fa` turns it off from the server if the phone and codes are both lost.
 - Activity log: logins, wrong passwords and lockouts, sessions, pairing, frames, uploads, and deletes, with time, IP, and browser, kept 90 days. An Activity button in the admin bar on every page opens it, with a count of the last day's warnings.
 - Break glass: Sign out everything, on the Sessions page, ends every login and deactivates every frame at once, after a typed confirmation and the password.
 - Forget all browsers, on the Sessions page, for a lost device. Changing the password forgets them too.
