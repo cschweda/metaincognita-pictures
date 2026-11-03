@@ -83,6 +83,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- openmantel.com: responsive WebP images (about 340 KB less on a phone), a favicon, a canonical URL, author and dates, Schema.org JSON-LD, `llms.txt`, `robots.txt`, and a sitemap.
 - A correct password on a bulk delete, demo removal, or Start over now clears failed attempts, as login does.
 - The photo grid is now square, cropped tiles with a select circle and a ⋮ on each photo. Caption, date, show on frames, send to a frame, and delete moved into the ⋮ panel, which shrinks the page by more than half.
 - The admin bar keeps Photos, Frames, Playlists, Tags, and Pair a frame; Stats, Login sessions, Technical details, GitHub, and Log out are under More.

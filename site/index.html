@@ -4,13 +4,52 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenMantel: a free, self-hosted picture frame</title>
-<meta name="description" content="OpenMantel puts your photos on every screen in the house. Free, open source, and self-hosted, with no accounts and no subscription.">
+<link rel="icon" href="favicon.ico">
+<meta name="description" content="OpenMantel puts your photos on every screen in the house. Free, open source, and self-hosted, with no sign-ups and no subscription.">
+<meta name="author" content="cschweda">
+<link rel="canonical" href="https://openmantel.com/">
 <meta property="og:title" content="OpenMantel">
 <meta property="og:description" content="Your photos on every screen in the house. Free, open source, and self-hosted.">
 <meta property="og:image" content="https://openmantel.com/og-image.png">
-<meta property="og:url" content="https://openmantel.com">
+<meta property="og:url" content="https://openmantel.com/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
+<meta property="article:published_time" content="2026-11-02T16:56:50-06:00">
+<meta property="article:modified_time" content="2026-11-03T19:10:25Z">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://openmantel.com/#software",
+      "name": "OpenMantel",
+      "description": "A free, open source digital picture frame you host yourself. Pair any computer and screen as a frame, control frames from your phone, organize photos by tag and playlist, and keep your photos on your own server.",
+      "url": "https://openmantel.com/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Linux, macOS, Windows, Raspberry Pi OS",
+      "image": "https://openmantel.com/og-image.png",
+      "screenshot": "https://openmantel.com/images/photos-1280.webp",
+      "license": "https://opensource.org/license/mit",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "cschweda", "url": "https://github.com/cschweda" },
+      "sameAs": ["https://github.com/cschweda/openmantel"]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://openmantel.com/#page",
+      "url": "https://openmantel.com/",
+      "name": "OpenMantel: a free, self-hosted picture frame",
+      "inLanguage": "en",
+      "about": { "@id": "https://openmantel.com/#software" },
+      "author": { "@type": "Person", "name": "cschweda", "url": "https://github.com/cschweda" },
+      "datePublished": "2026-11-02T16:56:50-06:00",
+      "dateModified": "2026-11-03T19:10:25Z"
+    }
+  ]
+}
+</script>
 <link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family: 'Bricolage'; src: url('fonts/bricolage.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
@@ -91,8 +130,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-conten
       </div>
     </div>
     <div class="prints">
-      <div class="print small"><img src="images/flowers.jpg" width="507" height="760" alt="Pink blossoms against a blue sky"></div>
-      <div class="print large"><img src="images/sunset.jpg" width="760" height="507" alt="A sunset over a green field and a row of trees"></div>
+      <div class="print small"><img src="images/flowers-507.webp" srcset="images/flowers-320.webp 320w, images/flowers-507.webp 507w" sizes="(max-width: 700px) 40vw, 220px" width="507" height="760" alt="Pink blossoms against a blue sky"></div>
+      <div class="print large"><img src="images/sunset-760.webp" srcset="images/sunset-480.webp 480w, images/sunset-760.webp 760w" sizes="(max-width: 700px) 60vw, 330px" width="760" height="507" alt="A sunset over a green field and a row of trees"></div>
     </div>
   </div>
   <div class="shelf"></div>
@@ -122,15 +161,15 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-conten
         <h2 id="see">See it</h2>
         <div class="shots">
           <figure class="wide">
-            <img src="images/frame.webp" width="1280" height="720" loading="lazy" alt="A frame showing a lake panorama in full, with blurred bars above and below and a caption">
+            <img src="images/frame-1280.webp" srcset="images/frame-640.webp 640w, images/frame-1280.webp 1280w" sizes="(max-width: 1080px) 100vw, 1040px" width="1280" height="720" loading="lazy" alt="A frame showing a lake panorama in full, with blurred bars above and below and a caption">
             <figcaption>On the wall: a panorama in full, with a blurred backdrop and its caption.</figcaption>
           </figure>
           <figure>
-            <img src="images/photos.webp" width="1280" height="1250" loading="lazy" alt="The admin's Photos page, with a large Start slideshow banner, its options, and a grid of photos">
+            <img src="images/photos-1280.webp" srcset="images/photos-640.webp 640w, images/photos-1280.webp 1280w" sizes="(max-width: 700px) 100vw, 780px" width="1280" height="1250" loading="lazy" alt="The admin's Photos page, with a large Start slideshow banner, its options, and a grid of photos">
             <figcaption>The admin: start a slideshow on every frame or just one.</figcaption>
           </figure>
           <figure class="phone">
-            <img src="images/phone.webp" width="780" height="1688" loading="lazy" alt="The admin on a phone, with the Start slideshow banner and its options">
+            <img src="images/phone-780.webp" srcset="images/phone-390.webp 390w, images/phone-780.webp 780w" sizes="(max-width: 700px) 320px, 260px" width="780" height="1688" loading="lazy" alt="The admin on a phone, with the Start slideshow banner and its options">
             <figcaption>The same admin on your phone.</figcaption>
           </figure>
         </div>

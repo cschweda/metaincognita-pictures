@@ -1,0 +1,20 @@
+# OpenMantel
+
+> OpenMantel is a free, open source (MIT) digital picture frame that you host yourself. Any computer with a browser and a screen can be a frame. You manage photos and frames from your phone, and the photos stay on your own server.
+
+OpenMantel runs as one Node.js process with SQLite, on a small VPS or a homelab server, installed with Docker Compose. Frames pair like a TV streaming stick: a frame shows a code and you approve it on your phone. A new install opens in demo mode with 15 sample photos, and switches to live with the owner's first upload. There are no sign-ups, no tracking, and no hosted service.
+
+Key features: start a slideshow on every frame or one; random or sequential order that repeats forever; tags, presets, and hand-picked playlists built by drag and drop; whole photos with no cropping, on a matte or blurred backdrop, with captions; offline playback on frames; iPhone HEIC support, with location data removed from everything a frame receives; per-photo metadata; export of every original; and guarded bulk deletes.
+
+## Docs
+
+- [README](https://github.com/cschweda/openmantel#readme): features, screenshots, why it's self-hosted, installation, frame setup, and development
+- [Self-hosting guide](https://github.com/cschweda/openmantel/blob/main/docs/self-hosting.md): homelab and reverse proxy setups, updates, backups, troubleshooting
+- [Design](https://github.com/cschweda/openmantel/blob/main/docs/00-master-design.md): architecture, data model, API, frame client
+- [Security](https://github.com/cschweda/openmantel/blob/main/docs/06-security.md): threat model and controls
+- [Security audits](https://github.com/cschweda/openmantel#security-audits): red/blue team audit findings and mitigations, newest first
+
+## Optional
+
+- [Changelog](https://github.com/cschweda/openmantel/blob/main/CHANGELOG.md)
+- [Source code](https://github.com/cschweda/openmantel)
