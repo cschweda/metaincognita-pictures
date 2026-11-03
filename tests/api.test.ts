@@ -1013,12 +1013,9 @@ test('a flood of wrong passwords from many addresses never locks out the right p
   assert.equal(owner.status, 200, 'the right password works on the first try during a flood')
   const guess = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.51' }, body: JSON.stringify({ password: 'wrong' }) })
   assert.equal(guess.status, 429, 'but a new address gets only one try')
-  // Rotating through one neighbourhood: after three wrong passwords from a /24, the rest of it waits.
-  for (const last of [60, 61]) {
-    await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': `192.0.2.${last}` }, body: JSON.stringify({ password: 'wrong' }) })
-  }
+  // Rotating through one neighbourhood gains nothing: after a wrong password from a /24, the rest of it waits.
   const neighbour = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.99' }, body: JSON.stringify({ password: PASSWORD }) })
-  assert.equal(neighbour.status, 429, 'the neighbourhood is locked after three wrong passwords from it')
+  assert.equal(neighbour.status, 429, 'the neighbourhood shares one try during a flood')
 
   // Past the flood ceiling, an unknown browser waits, but one that has logged in before gets straight in.
   for (let i = 0; i < 30; i++) {
@@ -1030,4 +1027,8 @@ test('a flood of wrong passwords from many addresses never locks out the right p
   assert.ok(known, 'logging in remembers the browser')
   const returning = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '198.19.0.2', cookie: known! }, body: JSON.stringify({ password: PASSWORD }) })
   assert.equal(returning.status, 200, 'a remembered browser is never held up by the flood')
+
+  assert.ok((await (await adminJson('/api/sessions/forget-browsers', 'POST', {})).json()).forgotten >= 1)
+  const forgotten = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '198.19.0.3', cookie: known! }, body: JSON.stringify({ password: PASSWORD }) })
+  assert.equal(forgotten.status, 429, 'once forgotten, it faces the flood limits again')
 })

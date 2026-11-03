@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Forget all browsers, on the Sessions page, for a lost device. Changing the password forgets them too.
 - Frame cards show whether each frame is playing or paused, highlight the matching remote button as soon as it's pressed, and say how long the frame has been online.
 - A show/hide button on the login password.
 - Tap or click a frame to see the photo's caption, date, camera settings, size, and tags, holding it on screen until the next tap, a new photo, or two minutes. Frames never get the location. The admin's own slideshow does the same, with an Exit slideshow button for phones.
@@ -90,7 +91,7 @@ All notable changes to this project are documented here. The format is based on 
 
 - The Frames page thumbnail follows the frame's photo within seconds: frames report every photo change, pause, and resume, and the page refreshes every 5 seconds while it's open.
 - New photos play next on frames that include them, instead of waiting for their turn, and a deleted or hidden photo leaves the screen at once. Regenerating the demo now shows on frames within a couple of seconds.
-- The login lockout counts an attempt before checking the password, so guesses sent all at once can't slip past it, and a flood of wrong guesses from many addresses limits unknown browsers (one try per address, a /24 or /48 locked after three, at most 30 attempts a minute) while browsers that have logged in before skip those limits, so the owner is never locked out.
+- The login lockout counts an attempt before checking the password, so guesses sent all at once can't slip past it, and a flood of wrong guesses from many addresses limits unknown browsers (one try per address shared with its /24 or /48, at most 30 attempts a minute) while browsers that have logged in before skip those limits, so the owner is never locked out.
 - Five wrong passwords lock that address out of logging in for five minutes. Each wrong try says how many are left, and the login button counts the lockout down. Other addresses can still log in, so nobody can lock the owner out. Start over, bulk delete, and demo removal share the same check and lockout.
 - Frame captions are smaller, about 28 px on a 1080p screen, in a Helvetica-like sans-serif from the system.
 - An unpaired screen goes straight to pairing without any refused requests, so the browser console stays clean, and the login form has a hidden username field for password managers.

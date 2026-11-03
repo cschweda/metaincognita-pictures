@@ -37,7 +37,7 @@ const FLOOD = { failures: 20, ms: 60 * 60_000 }
 // During a flood, password checks from addresses that aren't logged in are capped at this many a
 // minute in total. Past it they wait about a minute: a delay at worst, never a lockout.
 const FLOOD_CEILING = { attempts: 30, ms: 60_000 }
-const PREFIX_LOCK_AFTER = 3
+const PREFIX_LOCK_AFTER = 1 // Strict: the owner's own browsers are remembered and skip this.
 let floodAttempts: number[] = []
 
 const failures = new Map<string, { count: number, last: number, lockedUntil: number }>()

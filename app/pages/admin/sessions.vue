@@ -11,6 +11,12 @@ interface LoginSession {
 }
 
 const sessions = ref<LoginSession[]>([])
+const forgotten = ref('')
+
+async function forgetBrowsers() {
+  const result = await $fetch<{ forgotten: number }>('/api/sessions/forget-browsers', { method: 'POST', headers: { 'X-Requested-With': 'fetch' } })
+  forgotten.value = `Forgot ${result.forgotten} ${result.forgotten === 1 ? 'browser' : 'browsers'}.`
+}
 
 async function load() {
   sessions.value = (await $fetch<{ sessions: LoginSession[] }>('/api/sessions')).sessions
@@ -38,5 +44,17 @@ async function revoke(session: LoginSession) {
         <UButton size="sm" variant="soft" color="error" @click="revoke(session)">Sign out</UButton>
       </li>
     </ul>
+
+    <section aria-labelledby="remembered" class="flex max-w-3xl flex-col gap-2 rounded-lg border border-default p-4">
+      <h2 id="remembered" class="text-xl font-bold">Remembered browsers</h2>
+      <p class="text-muted">
+        Browsers you've logged in from are remembered, so a flood of wrong guesses from elsewhere can't keep you out.
+        If a device is lost, forget them all. Changing your password forgets them too. Each is remembered again at its next login.
+      </p>
+      <div class="flex flex-wrap items-center gap-3">
+        <UButton variant="soft" color="neutral" icon="i-lucide-shield-off" @click="forgetBrowsers">Forget all browsers</UButton>
+        <span role="status" class="text-sm">{{ forgotten }}</span>
+      </div>
+    </section>
   </AdminShell>
 </template>
