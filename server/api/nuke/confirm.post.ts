@@ -4,7 +4,6 @@
 export default defineEventHandler(async (event) => {
   const session = currentSessionRef(event)
   if (!session) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  const ip = clientIp(event)
 
   const body = await readBody<{ token?: unknown, phrase?: unknown, password?: unknown, then_demo?: unknown }>(event)
   const token = typeof body?.token === 'string' ? body.token : ''
@@ -15,7 +14,7 @@ export default defineEventHandler(async (event) => {
   takeNukeToken(token, session)
 
   const deleted = await nukeEverything()
-  console.warn(`[nuke] DELETED EVERYTHING ip=${ip} ${JSON.stringify(deleted)}`)
+  logEvent(event, 'warn', 'delete', `Start over: deleted ${deleted.photos} photos, ${deleted.frames} frames, ${deleted.playlists} playlists, ${deleted.tags} tags, and ${deleted.presets} presets${body?.then_demo === true ? ', then loaded the demo' : ''}`)
   // "Load the demo" in live mode is this: everything goes first, then a fresh demo.
   const job = body?.then_demo === true ? startDemoLoad() : null
   return { deleted, job }

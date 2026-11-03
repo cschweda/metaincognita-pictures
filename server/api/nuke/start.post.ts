@@ -2,6 +2,6 @@
 export default defineEventHandler((event) => {
   const session = currentSessionRef(event)
   if (!session) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  console.warn(`[nuke] started ip=${clientIp(event)}`)
+  logEvent(event, 'warn', 'delete', 'Opened Start over')
   return { token: startNuke(session), counts: nukeCounts(), phrase: NUKE_PHRASE, wait_ms: NUKE_MIN_WAIT_MS }
 })

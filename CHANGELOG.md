@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Activity log: logins, wrong passwords and lockouts, sessions, pairing, frames, uploads, and deletes, with time, IP, and browser, kept 90 days. An Activity button in the admin bar on every page opens it, with a count of the last day's warnings.
+- Break glass: Sign out everything, on the Sessions page, ends every login and deactivates every frame at once, after a typed confirmation and the password.
 - Forget all browsers, on the Sessions page, for a lost device. Changing the password forgets them too.
 - Frame cards show whether each frame is playing or paused, highlight the matching remote button as soon as it's pressed, and say how long the frame has been online.
 - A show/hide button on the login password.

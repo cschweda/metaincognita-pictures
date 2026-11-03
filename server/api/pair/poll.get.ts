@@ -31,12 +31,12 @@ export default defineEventHandler((event) => {
   })()
 
   if (outcome === 'replayed') {
-    console.warn(`[pair] SUSPICIOUS poll after claim ip=${clientIp(event)}`)
+    logEvent(event, 'warn', 'pair', 'Suspicious: someone reused a pairing that was already claimed')
     return { status: 'expired' }
   }
   if (outcome === 'approved') {
     setDeviceCookie(event, token)
-    console.log(`[pair] claimed ip=${clientIp(event)}`)
+    logEvent(event, 'info', 'pair', 'A frame finished pairing')
   }
   return { status: outcome }
 })

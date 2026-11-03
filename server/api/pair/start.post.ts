@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
       dimension(body?.dpr),
     )
     if (pairing) {
-      console.log(`[pair] start ip=${ip}`)
+      logEvent(event, 'info', 'pair', 'A screen asked for a pairing code')
       return { pairing_id: pairing.id, code: formatCode(pairing.code), expires_at: pairing.expires_at }
     }
   }

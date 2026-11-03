@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   const token = rotateToken(deviceId)
   if (token) {
     setDeviceCookie(event, token)
-    console.log(`[devices] token rotated ${deviceId}`)
+    logEvent(event, 'info', 'frame', `Renewed the security token of the frame ${JSON.stringify(event.context.device!.name)}`)
   }
   return { ok: true }
 })

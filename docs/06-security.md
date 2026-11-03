@@ -52,6 +52,9 @@ Everything else is hygiene.
 - **Session list** in the admin UI with a revoke button per session, for the stolen-phone case.
 - Passkeys: optional later. For one user, a long random password in a password manager is equivalent.
 
+- **Activity log:** logins, logouts, wrong passwords and lockouts, signed-out sessions, forgotten browsers, pairing requests, approvals, claims and suspicious replays, frame deactivations and token renewals, uploads, single and bulk deletes, demo removal, and Start over go to the `events` table as well as the console, with the time, IP, and browser. It's kept 90 days and capped at 20,000 rows. The admin bar links to it from every page, with a count of the last 24 hours' warnings.
+- **Break glass:** **Sign out everything** (Sessions page) ends every admin session including the caller's, revokes every frame, drops unclaimed pairings, and forgets every remembered browser, after `sign out everything` is typed by hand and the password checked through the shared lockout. It leaves photos alone.
+
 ## 5. Pairing flow
 
 | Risk | Control |

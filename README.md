@@ -24,6 +24,7 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 - **Plays anywhere you're logged in.** Any browser where you're logged in can run a full-screen slideshow, with no pairing.
 - **Shows what's in each photo.** The ⋮ button on any photo shows its original format, file size, compression, colour profile, camera and lens settings, location if the camera recorded one, and the frame images made from it.
 - **Guards the login.** Five wrong passwords lock that address out for five minutes, and the page says how many tries are left. Browsers you've logged in from are remembered, so a flood of guesses from elsewhere can't keep you out. Logging out never stops a frame.
+- **Keeps a record.** The Activity page, one tap from every admin page, lists logins, wrong passwords and lockouts, pairing, frames, and deletes, and the admin bar shows a count when there have been warnings. If something looks wrong, **Sign out everything** ends every login and deactivates every frame at once.
 - **Hard to delete by accident.** One photo takes one confirmation. Deleting several needs the count typed by hand and your password. **Start over**, which deletes everything, takes four confirmations, a 10-second wait, a sentence you have to type yourself, and your password.
 - **Stays yours.** Download every original, with its tags and captions, at any time. The Stats page shows server health and roughly how many more photos will fit, and the Technical details page shows the exact version running.
 

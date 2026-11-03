@@ -10,8 +10,28 @@ const LINKS = [
   { label: 'Playlists', to: '/admin/playlists' },
   { label: 'Tags', to: '/admin/tags' },
 ]
-const MORE = ['/admin/stats', '/admin/sessions', '/admin/technical', '/admin/start-over']
+const MORE = ['/admin/activity', '/admin/stats', '/admin/sessions', '/admin/technical', '/admin/start-over']
 const { repository } = useAppConfig()
+
+// The Activity log is one tap away from every page, with a count when there have been warnings.
+const warnings = ref(0)
+let warningTimer: ReturnType<typeof setInterval> | undefined
+async function loadWarnings() {
+  try {
+    warnings.value = (await $fetch<{ warnings_24h: number }>('/api/events/summary')).warnings_24h
+  }
+  catch {
+    // Logged out or offline: leave the count as it was.
+  }
+}
+onMounted(() => {
+  loadWarnings()
+  warningTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') loadWarnings()
+  }, 60_000)
+})
+onBeforeUnmount(() => clearInterval(warningTimer))
+
 const moreItems = computed(() => [
   [
     { label: 'Stats', icon: 'i-lucide-chart-column', to: '/admin/stats' },
@@ -152,6 +172,18 @@ async function logout() {
         </NuxtLink>
         <UButton to="/admin/pair" icon="i-lucide-plus" variant="soft" class="ms-1" :aria-current="route.path === '/admin/pair' ? 'page' : undefined">
           Pair a frame
+        </UButton>
+        <UButton
+          to="/admin/activity"
+          variant="ghost"
+          :color="warnings ? 'warning' : 'neutral'"
+          icon="i-lucide-activity"
+          :aria-label="warnings ? `Activity, ${warnings} ${warnings === 1 ? 'warning' : 'warnings'} in the last 24 hours` : 'Activity'"
+          :aria-current="route.path === '/admin/activity' ? 'page' : undefined"
+          :class="{ 'text-primary': route.path === '/admin/activity' }"
+        >
+          <span class="hidden sm:inline">Activity</span>
+          <UBadge v-if="warnings" color="warning" variant="solid" size="sm">{{ warnings > 99 ? '99+' : warnings }}</UBadge>
         </UButton>
         <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
           <UButton

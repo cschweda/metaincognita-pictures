@@ -1004,6 +1004,53 @@ test('wrong passwords sent all at once still lock out after five', async () => {
   assert.ok(attempts.filter(status => status === 429).length >= 8)
 })
 
+test('the Activity log records logins, wrong passwords, and deactivations, for admins only', async () => {
+  await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '198.51.100.90' }, body: JSON.stringify({ password: 'wrong-password' }) })
+  const { cookie } = await pairDevice('Logged frame')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((d: { name: string }) => d.name === 'Logged frame')
+  await adminFetch(`/api/devices/${id}/revoke`, { method: 'POST', headers: CSRF })
+
+  const { events } = await (await adminFetch('/api/events')).json()
+  const messages = events.map((e: { message: string }) => e.message)
+  assert.ok(messages.some((m: string) => m.startsWith('Wrong password (login)')), 'wrong passwords are logged')
+  assert.ok(messages.includes('Logged in'))
+  assert.ok(messages.includes('Deactivated the frame "Logged frame"'))
+  const wrong = events.find((e: { message: string }) => e.message.startsWith('Wrong password (login)'))
+  assert.equal(wrong.level, 'warn')
+  assert.equal(wrong.ip, '198.51.100.90')
+
+  const warnings = (await (await adminFetch('/api/events?level=warn')).json()).events
+  assert.ok(warnings.length > 0 && warnings.every((e: { level: string }) => e.level === 'warn'))
+  const frames = (await (await adminFetch('/api/events?kind=frame')).json()).events
+  assert.ok(frames.every((e: { kind: string }) => e.kind === 'frame'))
+
+  assert.equal((await fetch(`${BASE}/api/events`)).status, 401)
+  assert.equal((await fetch(`${BASE}/api/events`, { headers: { cookie } })).status, 401, 'a deactivated frame gets nothing')
+  const live = await pairDevice('Nosy frame')
+  assert.equal((await fetch(`${BASE}/api/events`, { headers: { cookie: live.cookie } })).status, 403)
+})
+
+test('break glass signs out every login and every frame', async () => {
+  const frame = await pairDevice('Break glass frame')
+  const other = cookieFrom(await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) }))
+  assert.equal((await adminJson('/api/sessions/sign-out-everything', 'POST', { phrase: 'sign out', password: PASSWORD })).status, 400)
+  const done = await adminJson('/api/sessions/sign-out-everything', 'POST', { phrase: 'sign out everything', password: PASSWORD })
+  assert.equal(done.status, 200)
+  const counts = await done.json()
+  assert.ok(counts.sessions >= 2 && counts.frames >= 1)
+
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie: admin } })).json(), { admin: false, device: false }, 'this session is signed out')
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie: other } })).json(), { admin: false, device: false }, 'so is every other')
+  assert.equal((await fetch(`${BASE}/api/frame/config`, { headers: { cookie: frame.cookie } })).status, 401, 'frames go back to pairing')
+
+  // Log in again, as the owner would, for the tests that follow.
+  admin = cookieFrom(await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) }))
+  const events = (await (await adminFetch('/api/events?kind=session')).json()).events
+  assert.ok(events.some((e: { message: string }) => e.message.startsWith('Signed out everything')))
+  assert.equal((await (await adminFetch('/api/events/summary')).json()).warnings_24h > 0, true)
+})
+
 // This leaves the server in a flood of wrong guesses, so it runs last.
 test('a flood of wrong passwords from many addresses never locks out the right password', async () => {
   for (let i = 0; i < 20; i++) {

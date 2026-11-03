@@ -2,7 +2,6 @@
 // by hand ("delete 12 photos", matching the count) and the admin password, so it can't happen by
 // a stray click.
 export default defineEventHandler(async (event) => {
-  const ip = clientIp(event)
   const body = await readBody<{ photo_ids?: unknown, phrase?: unknown, password?: unknown }>(event)
   const ids = Array.isArray(body?.photo_ids) ? [...new Set(body.photo_ids.filter((id): id is string => typeof id === 'string'))] : []
   if (ids.length < 2 || ids.length > 1000) {
@@ -16,6 +15,6 @@ export default defineEventHandler(async (event) => {
 
   let deleted = 0
   for (const id of ids) if (await deletePhoto(id)) deleted++
-  console.warn(`[photos] bulk deleted ${deleted} of ${ids.length} ip=${ip}`)
+  logEvent(event, 'warn', 'delete', `Deleted ${deleted} photos at once`)
   return { deleted }
 })

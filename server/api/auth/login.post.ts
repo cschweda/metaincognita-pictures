@@ -5,6 +5,6 @@ export default defineEventHandler(async (event) => {
   await verifyAdminPassword(event, body?.password)
   createSession(event)
   rememberBrowser(event)
-  console.log(`[auth] login succeeded ip=${clientIp(event)}`)
+  logEvent(event, 'info', 'login', 'Logged in')
   return { ok: true }
 })

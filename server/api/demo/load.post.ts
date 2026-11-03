@@ -10,6 +10,6 @@ export default defineEventHandler(async (event) => {
   }
   if (demoJob().state === 'loading') return { job: demoJob() }
   await nukeEverything({ keepFrames: true })
-  console.log(`[demo] reloaded ip=${clientIp(event)}`)
+  logEvent(event, 'info', 'demo', 'Replaced the demo with new sample photos')
   return { job: startDemoLoad() }
 })

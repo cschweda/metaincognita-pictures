@@ -9,6 +9,6 @@ export default defineEventHandler((event) => {
   if (!match) throw createError({ statusCode: 404, statusMessage: 'Session not found' })
 
   db.prepare(`DELETE FROM sessions WHERE id = ?`).run(match.id)
-  console.log(`[auth] session revoked ip=${clientIp(event)}`)
+  logEvent(event, 'warn', 'session', 'Signed out a login session')
   return { ok: true }
 })

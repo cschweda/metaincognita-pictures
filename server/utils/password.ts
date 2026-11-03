@@ -54,6 +54,7 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
 
   const locked = Math.max(loginLockout(key, Date.now(), { prefix, trusted }), known ? loginLockout(known, Date.now(), { trusted: true }) : 0)
   if (locked > 0) {
+    logEvent(event, 'warn', 'login', `Refused while locked out (${purpose})`)
     setResponseHeader(event, 'Retry-After', Math.ceil(locked / 1000))
     throw createError({ statusCode: 429, statusMessage: lockoutMessage(locked) })
   }
@@ -82,11 +83,11 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
     attempt.triesLeft = 0
   }
   if (attempt.lockedMs > 0) {
-    console.warn(`[auth] ${purpose} locked out after wrong passwords ip=${ip}`)
+    logEvent(event, 'warn', 'login', `Locked out for 5 minutes after wrong passwords (${purpose})`)
     setResponseHeader(event, 'Retry-After', Math.ceil(attempt.lockedMs / 1000))
     throw createError({ statusCode: 429, statusMessage: lockoutMessage(attempt.lockedMs) })
   }
-  console.warn(`[auth] ${purpose} wrong password ip=${ip}`)
+  logEvent(event, 'warn', 'login', `Wrong password (${purpose}), ${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'} left`)
   throw createError({
     statusCode: 401,
     statusMessage: `Wrong password. ${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'} left before a ${LOCKOUT_MS / 60_000}-minute lockout.`,

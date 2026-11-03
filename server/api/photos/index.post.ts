@@ -95,6 +95,8 @@ export default defineEventHandler(async (event) => {
         : await ingestPhoto(file.path, file.filename, tags)
       results.push({ filename: file.filename, ...result })
     }
+    const added = results.filter(result => result.status === 'added').length
+    if (added) logEvent(event, 'info', 'photo', `Uploaded ${added} ${added === 1 ? 'photo' : 'photos'}`)
     return { results }
   }
   finally {

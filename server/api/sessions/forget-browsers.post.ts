@@ -2,6 +2,6 @@
 // affected; each browser is remembered again at its next login.
 export default defineEventHandler((event) => {
   const forgotten = forgetAllBrowsers()
-  console.warn(`[auth] forgot ${forgotten} remembered browsers ip=${clientIp(event)}`)
+  logEvent(event, 'warn', 'session', `Forgot ${forgotten} remembered ${forgotten === 1 ? 'browser' : 'browsers'}`)
   return { forgotten }
 })

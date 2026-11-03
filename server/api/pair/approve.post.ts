@@ -21,6 +21,6 @@ export default defineEventHandler(async (event) => {
      WHERE id = ? AND status = 'pending'`,
   ).run(name, pairing.id)
 
-  console.log(`[pair] approved name=${JSON.stringify(name)} ip=${clientIp(event)}`)
+  logEvent(event, 'info', 'pair', `Approved a frame named ${JSON.stringify(name)}, from ${pairing.ip ?? 'an unknown address'}`)
   return { ok: true, name }
 })
