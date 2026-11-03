@@ -701,3 +701,18 @@ test('photo details show the original\'s format and camera data, for admins only
   const { cookie } = await pairDevice('Details check')
   assert.equal((await fetch(`${BASE}/api/photos/${id}/details`, { headers: { cookie } })).status, 403)
 })
+
+test('audit follow-up: the nginx image check accepts exactly one image path', async () => {
+  const { photo: shown } = await upload('#767676', 'shown-for-nginx.jpg')
+  const { photo: hidden } = await upload('#777777', 'hidden-for-nginx.jpg')
+  await adminJson(`/api/photos/${hidden.id}`, 'PATCH', { hidden: true })
+  const { cookie } = await pairDevice('Nginx check')
+  const check = async (uri: string) => (await fetch(`${BASE}/api/auth/image`, { headers: { cookie, 'X-Original-URI': uri } })).status
+
+  assert.equal(await check(`/v/${shown.id}-640.webp`), 204)
+  assert.equal(await check(`/v/${hidden.id}-640.webp`), 403)
+  assert.equal(await check(`/v/${hidden.id}-640.webp?x=/v/${shown.id}-640.webp`), 403, 'an id in the query string is ignored')
+  assert.equal(await check(`/v/${hidden.id}-640.webp/v/${shown.id}-640.webp`), 403)
+  assert.equal(await check(`/x/v/${shown.id}-640.webp`), 403)
+  assert.equal(await check(''), 403)
+})

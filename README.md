@@ -102,9 +102,9 @@ Every red/blue team audit is recorded here, newest first. The latest is listed i
 
 **Scope:** the whole app at commit `7e67c19`, plus deployment files, frame setup scripts, CI, dependencies, git history, and the production server's headers and nginx settings, which were read only.
 
-**Method:** three red teams each attacked a throwaway local copy in one area: logins, sessions and pairing (RA); uploads, images and file serving (RF); and API logic, frames, and infrastructure (RX). Each finding needed a working proof. A separate blue team then tried every attack again on the fixed build, looked for ways around each fix, and checked for regressions. It found one bypass and two regressions, and all three were then fixed. Production was never attacked.
+**Method:** three red teams each attacked a throwaway local copy in one area: logins, sessions and pairing (RA); uploads, images and file serving (RF); and API logic, frames, and infrastructure (RX). Each finding needed a working proof. A separate blue team then tried every attack again on the fixed build, looked for ways around each fix, and checked for regressions. It found one bypass and two regressions, and all three were then fixed. An automated review of the fix commit found one more bypass (RX-6b), also fixed. Production was never attacked.
 
-**Result:** 1 High, 4 Medium, 11 Low, and 6 informational findings. All are fixed except the items marked as accepted, or as needing a server change by the owner.
+**Result:** 1 High, 4 Medium, 12 Low, and 6 informational findings. All are fixed except the items marked as accepted, or as needing a server change by the owner.
 
 | ID | Finding | Severity | Mitigation |
 |---|---|---|---|
@@ -118,6 +118,7 @@ Every red/blue team audit is recorded here, newest first. The latest is listed i
 | RX-3 | The admin's browser built an image address from a value the frame supplied | Low | Fixed: checked on the server (RX-2) and in the page. |
 | RX-5 | The rate limiter never forgot an address, so a flood of addresses grew memory | Low | Fixed: swept every minute and capped. IPv6 is limited per /64, since one IPv6 host can use 2^64 addresses. |
 | RX-6 | A frame could still fetch a photo after it was hidden, by its id | Low | Fixed: hidden photos are refused to frames, through `/v/` and through nginx's optional image check. |
+| RX-6b | The first fix for RX-6 in nginx's image check matched a photo id anywhere in the address, so a visible photo's id in the query string could unlock a hidden one. This only affects the optional nginx image setup, which wasn't in use. | Low | Fixed: the check accepts exactly one image path and nothing else, and nginx should pass `$uri`. |
 | RX-7 | One admin request could freeze the server with thousands of tag changes | Low | Fixed: at most 100 tags added or removed at a time. |
 | RF-3 | An interrupted or rejected upload could leave temporary files on disk | Low | Fixed: a failed upload stops reading at once, and leftovers over an hour old are swept away. |
 | RF-4 | Tags sent with an upload skipped the 40-character rule | Low | Fixed: the same checks as the Tags page, and at most 20 tags. |

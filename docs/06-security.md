@@ -74,7 +74,7 @@ Everything else is hygiene.
 
 - Variant URLs (`/v/<ulid>-<size>.webp`) are unguessable but not secret, so a URL alone must not be enough to see a photo.
 - **Required:** `/v/` needs an admin session or a valid device, and the admin grid needs thumbnails too, so both roles pass. The auth middleware enforces this, and a Nitro route serves the files, so this holds with no nginx changes.
-- **Optional, for speed:** nginx can serve `/v/` itself with `auth_request` calling `GET /api/auth/image`, which returns 204, 401, or 403. The auth location must pass `proxy_set_header X-Original-URI $request_uri;`, because a device is refused a hidden photo by its id, and without the header a device is refused everything. Never add a `/v/` location without `auth_request`. Photo files must be readable by the nginx user.
+- **Optional, for speed:** nginx can serve `/v/` itself with `auth_request` calling `GET /api/auth/image`, which returns 204, 401, or 403. The auth location must pass `proxy_set_header X-Original-URI $uri;` (the normalized path nginx serves, not `$request_uri`), because a device is refused a hidden photo by its id, and without the header a device is refused everything. Never add a `/v/` location without `auth_request`. Photo files must be readable by the nginx user.
 - **Originals are never served over HTTP.** An admin "download original" button, if wanted, streams through a Nitro handler that checks the admin session.
 - Nginx `location /v/` sets `Cache-Control: private, max-age=31536000, immutable`; no directory listing.
 
