@@ -22,6 +22,16 @@ KEEP_LOGS=30
 MIN_NODE_MAJOR=22
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# One rebuild at a time. A second run would delete .output.new while the first is still
+# writing it, and the first would then swap in a build with no server/node_modules.
+if command -v flock >/dev/null; then
+  exec 9>.rebuild.lock
+  if ! flock -n 9; then
+    echo "Another rebuild is already running here. Wait for it to finish, then try again." >&2
+    exit 1
+  fi
+fi
 REPO_DIR="$(pwd)"
 
 # --------------------------------------------------------------- logging ----
@@ -121,6 +131,7 @@ rm -rf .nuxt .output.new
 # Node's default heap on a 1 GiB server is too small for this build, so it needs room in swap.
 NODE_OPTIONS=--max-old-space-size=1536 BUILD_OUTPUT_DIR=.output.new pnpm build
 [[ -f .output.new/server/index.mjs ]] || die "build produced no .output.new/server/index.mjs"
+[[ -d .output.new/server/node_modules ]] || die "build produced no .output.new/server/node_modules"
 ok "build ok"
 
 # ------------------------------------------------------------- migrations ----

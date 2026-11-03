@@ -71,6 +71,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- `rebuild.sh` refuses to start while another rebuild is running in the same folder, and stops before restarting if a build is missing its server dependencies. Two overlapping runs had swapped in a broken build.
 - README rewritten for accuracy and clarity.
 - Slideshows never stop. After the last photo they start again, with a fresh shuffle each time round in random order, and a new round never opens on the photo that just ended the last one.
 - A tagged admin slideshow now plays at random unless you choose Sequential. Before, it always played in your arranged order.
