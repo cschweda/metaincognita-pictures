@@ -11,6 +11,7 @@ export interface Photo {
   hidden: number
   position: number
   caption: string | null
+  demo: number
 }
 
 export interface Tag {

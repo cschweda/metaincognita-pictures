@@ -19,6 +19,11 @@ const typing = ref(false)
 const working = ref(false)
 const error = ref('')
 const deleted = ref<Counts | null>(null)
+const thenDemo = ref(false)
+const demoStarted = ref(false)
+const route = useRoute()
+// "Load the demo" in live mode links here, with the box already ticked.
+if (route.query.demo === '1') thenDemo.value = true
 let timer: ReturnType<typeof setInterval> | undefined
 
 const problem = (failure: unknown, fallback: string) => (failure as { statusMessage?: string }).statusMessage ?? fallback
@@ -85,12 +90,13 @@ async function nuke() {
   working.value = true
   error.value = ''
   try {
-    const result = await $fetch<{ deleted: Counts }>('/api/nuke/confirm', {
+    const result = await $fetch<{ deleted: Counts, job: unknown }>('/api/nuke/confirm', {
       method: 'POST',
       headers: apiHeaders,
-      body: { token: token.value, phrase: typed.value, password: password.value },
+      body: { token: token.value, phrase: typed.value, password: password.value, then_demo: thenDemo.value },
     })
     deleted.value = result.deleted
+    demoStarted.value = Boolean(result.job)
     typing.value = false
     step.value = 'done'
   }
@@ -130,6 +136,7 @@ onBeforeUnmount(() => clearInterval(timer))
         <p class="text-muted">
           You stay logged in. The server's nightly database backups are left alone, so a backup could still bring the library's records back, but only if the photo files are backed up too.
         </p>
+        <UCheckbox v-model="thenDemo" label="Load the demo photos afterwards" description="Start again with a few sample photos, as on a new install" />
         <div class="flex flex-wrap gap-2">
           <UButton href="/api/photos/export" external download variant="soft" icon="i-lucide-download">Download all my photos first</UButton>
           <UButton color="error" variant="outline" icon="i-lucide-triangle-alert" @click="begin">I want to delete everything</UButton>
@@ -169,6 +176,7 @@ onBeforeUnmount(() => clearInterval(timer))
           {{ plural(deleted.photos, 'photo') }}, {{ plural(deleted.frames, 'frame') }}, {{ plural(deleted.playlists, 'playlist') }},
           {{ plural(deleted.tags, 'tag') }}, and {{ plural(deleted.presets, 'preset') }} are gone. You're starting from scratch.
         </p>
+        <p v-if="demoStarted">The demo photos are loading now. They'll appear on the Photos page over the next minute.</p>
         <div class="flex flex-wrap gap-2">
           <UButton to="/admin" icon="i-lucide-upload">Add photos</UButton>
           <UButton to="/admin/pair" variant="soft" icon="i-lucide-plus">Pair a frame</UButton>

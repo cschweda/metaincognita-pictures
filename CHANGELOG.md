@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Demo mode. A new install fetches 15 random royalty-free photos from Lorem Picsum on first start, tagged, about half captioned, in two playlists with a preset, so it can be tried at once. A banner shows the mode and the load progress. New demo photos swaps in a fresh set after one confirmation, keeping frames paired. The first upload of your own switches the app to live for good; leftover demo photos can then be removed with the typed count and password. Start over can load the demo afterwards. `NUXT_DEMO_AUTOLOAD=false` starts empty instead.
 - Start over, under More: deletes every photo, frame, playlist, tag, and preset after two confirmations, a 10-second wait, a sentence typed by hand with pasting blocked, and the admin password. The server checks the same things, with a one-time token that must be at least 10 seconds old.
 - Deleting two or more photos needs the count typed by hand (for example `delete 12 photos`), the admin password, and a 5-second wait. One photo keeps its single confirmation, and single deletes are limited to 30 a minute so they can't be used to get around this.
 - README screenshots of Photos, photo details, Frames, a playlist, pairing, a frame on the wall, and the phone view, plus a See it section on openmantel.com.
@@ -82,6 +83,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- A correct password on a bulk delete, demo removal, or Start over now clears failed attempts, as login does.
 - The photo grid is now square, cropped tiles with a select circle and a ⋮ on each photo. Caption, date, show on frames, send to a frame, and delete moved into the ⋮ panel, which shrinks the page by more than half.
 - The admin bar keeps Photos, Frames, Playlists, Tags, and Pair a frame; Stats, Login sessions, Technical details, GitHub, and Log out are under More.
 - The Start slideshow preview fills its frame, and is hidden on phones so the controls come first. The Show dropdown is now Tag, defaulting to Any tag, and the remote reads naturally.

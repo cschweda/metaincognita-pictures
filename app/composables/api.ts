@@ -61,6 +61,11 @@ export async function ensureTags(names: string[]): Promise<string[]> {
   return results.map(result => result.tag.id)
 }
 
+/** Bumped when the library changes from outside the photo grid, such as a demo load, so the grid refetches. */
+export function useLibraryVersion() {
+  return useState('library-version', () => 0)
+}
+
 /** The tag chosen in the admin. Empty means every photo. */
 export function useTagFilter() {
   return useState('tag-filter', () => '')

@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 429, statusMessage: 'Too many attempts' })
   }
 
-  const body = await readBody<{ token?: unknown, phrase?: unknown, password?: unknown }>(event)
+  const body = await readBody<{ token?: unknown, phrase?: unknown, password?: unknown, then_demo?: unknown }>(event)
   const token = typeof body?.token === 'string' ? body.token : ''
   const phrase = typeof body?.phrase === 'string' ? body.phrase : ''
   const password = typeof body?.password === 'string' ? body.password : ''
@@ -26,9 +26,12 @@ export default defineEventHandler(async (event) => {
     console.warn(`[nuke] wrong password ip=${ip}`)
     throw createError({ statusCode: 401, statusMessage: 'Wrong password' })
   }
+  clearLoginAttempts(ipBucket(ip)) // A correct password counts like a login.
   takeNukeToken(token, session)
 
   const deleted = await nukeEverything()
   console.warn(`[nuke] DELETED EVERYTHING ip=${ip} ${JSON.stringify(deleted)}`)
-  return { deleted }
+  // "Load the demo" in live mode is this: everything goes first, then a fresh demo.
+  const job = body?.then_demo === true ? startDemoLoad() : null
+  return { deleted, job }
 })

@@ -4,12 +4,13 @@
 
 [OpenMantel](https://openmantel.com) is a free, open source digital picture frame that you host yourself. Put a small computer behind a monitor, point it at your server, and your photos are on display.
 
-Store-bought frames do much the same, but they often lock you into an app, a subscription, or someone else's cloud. OpenMantel runs on a small VPS or a homelab server. Your photos stay on your own server, there are no sign-ups and no tracking, and the app makes no outside requests.
+Store-bought frames do much the same, but they often lock you into an app, a subscription, or someone else's cloud. OpenMantel runs on a small VPS or a homelab server. Your photos stay on your own server, there are no sign-ups and no tracking, and the app never sends anything out. Its only outside request is fetching sample photos for demo mode, and only if you use it.
 
 OpenMantel is part of the [metaincognita](https://metaincognita.com) collection of simulations and tools. It doesn't depend on any of them.
 
 ## What it does
 
+- **Works straight away.** A new install opens in demo mode, with 15 tagged sample photos, two playlists, and some captions, so you can try everything before adding your own. Your first upload switches it to live.
 - **Pairs like a TV streaming stick.** A new frame shows a code. Enter it on your phone and the frame is set up for good, with no keyboard and no password on the frame.
 - **Works as a remote.** From your phone, start a slideshow on every frame or just one, leaving the others as they are. Skip, go back, pause, or send any photo to a frame. Change what a frame shows, its matte color, timing, captions, and sleep hours, or schedule a preset for certain days and times. Frames update immediately. Add the admin to your home screen and it opens like an app.
 - **Never crops.** Portrait, square, and panoramic photos always show in full, on a matte or a blurred backdrop, with optional captions.
@@ -27,6 +28,10 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 ## Screenshots
 
 All screenshots use the sample photos from `pnpm seed:fetch`, with two demo frames running.
+
+**First run.** A new install opens in demo mode, with sample photos already tagged, captioned, and in two playlists. Upload a photo of your own and it goes live; any demo photos left over can then be removed in one step.
+
+![The Photos page in demo mode: a Demo mode banner explaining the sample photos, with New demo photos and Clear everything buttons, above Start slideshow](docs/screenshots/demo.webp)
 
 **Photos.** The admin home. Start a slideshow on every frame, one frame, or this screen, from all photos, a playlist, or a tag, in random or sequential order. A remote works the chosen frames. Below it, upload and browse the library.
 
@@ -98,7 +103,7 @@ Paste the line it prints into `.env`, in place of the empty `NUXT_ADMIN_PASSWORD
 docker compose up -d
 ```
 
-Open `https://your-domain/login` to sign in. With Docker, a database snapshot is taken every day and kept for 14 days.
+Open `https://your-domain/login` to sign in. The first time it starts, OpenMantel fetches 15 sample photos from [Lorem Picsum](https://picsum.photos), which sources them from Unsplash, so you can try it right away. Set `NUXT_DEMO_AUTOLOAD=false` in `.env` to start with an empty library instead. With Docker, a database snapshot is taken every day and kept for 14 days.
 
 The [self-hosting guide](docs/self-hosting.md) covers homelab setups, updating, backups and restores, running without Docker under pm2, and troubleshooting.
 

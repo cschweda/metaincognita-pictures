@@ -11,6 +11,7 @@ interface Photo {
   caption: string | null
   taken_at: string | null
   tags: Tag[]
+  demo?: number
 }
 interface UploadResponse {
   results: { filename: string, status: 'added' | 'duplicate' | 'rejected', error?: string }[]
@@ -255,6 +256,13 @@ watch(tagFilter, () => {
   selected.value = []
   loadPhotos()
 })
+// A demo load, or the demo being removed, changes the library from outside this page.
+const libraryVersion = useLibraryVersion()
+watch(libraryVersion, () => {
+  loadPhotos()
+  loadTags()
+  loadPlaylists()
+})
 
 function toggleSelected(id: string, checked: boolean) {
   selected.value = checked ? [...selected.value, id] : selected.value.filter(item => item !== id)
@@ -372,6 +380,7 @@ async function upload(event: Event) {
   input.value = ''
   progress.value = `${added} added, ${duplicates} already in the library.`
   await Promise.all([loadPhotos(), loadTags()])
+  libraryVersion.value++ // The first upload of your own switches the app to live, and the banner shows it.
 }
 
 async function setShown(photo: Photo, shown: boolean) {

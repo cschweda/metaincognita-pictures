@@ -117,8 +117,16 @@ onMounted(() => {
   targetTimer = setInterval(() => loadTargets().catch(() => undefined), 30_000) // Keeps online status and the remote current.
 })
 onBeforeUnmount(() => clearInterval(targetTimer))
+const libraryVersion = useLibraryVersion()
 watch([show, tags], () => {
   if (props.hero) loadHero()
+})
+// A demo load or removal changes the photos, tags, and playlists all at once.
+watch(libraryVersion, () => {
+  if (!props.hero) return
+  loadHero()
+  loadTags()
+  loadTargets().catch(() => undefined)
 })
 
 async function logout() {
@@ -157,6 +165,8 @@ async function logout() {
         </UDropdownMenu>
       </nav>
     </header>
+
+    <DemoBanner v-if="hero" />
 
     <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
       <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" :frames="targetFrames" :ready="targetsLoaded" @started="loadTargets" />

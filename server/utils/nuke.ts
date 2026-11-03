@@ -52,23 +52,32 @@ async function emptyFolder(path: string) {
   await Promise.all(files.map(file => rm(`${path}/${file}`, { recursive: true, force: true })))
 }
 
-/** Deletes everything except admin sessions and backups. Frames fall back to their pairing screen. */
-export async function nukeEverything(): Promise<ReturnType<typeof nukeCounts>> {
+/**
+ * Deletes everything except admin sessions and backups. Frames fall back to their pairing screen,
+ * unless `keepFrames`: a demo reload keeps them paired and sets them back to showing all photos.
+ */
+export async function nukeEverything({ keepFrames = false } = {}): Promise<ReturnType<typeof nukeCounts>> {
   const before = nukeCounts()
   const devices = db.prepare<[], { id: string }>(`SELECT id FROM devices`).all()
   db.transaction(() => {
+    if (keepFrames) {
+      db.exec(`UPDATE devices SET filter = '{"tags":[],"mode":"any"}', playlist_id = NULL, schedule_preset_id = NULL, current_photo_id = NULL;`)
+    }
+    else {
+      db.exec(`DELETE FROM pairings; DELETE FROM devices;`)
+    }
     db.exec(`
-      DELETE FROM pairings;
-      DELETE FROM devices;
       DELETE FROM playlist_photos;
       DELETE FROM playlists;
       DELETE FROM photo_tags;
       DELETE FROM tags;
       DELETE FROM presets;
       DELETE FROM photos;
+      DELETE FROM settings WHERE key = 'mode';
     `)
   })()
-  for (const device of devices) closeFrameStreams(device.id)
+  if (keepFrames) pushToAllFrames('playlist-changed')
+  else for (const device of devices) closeFrameStreams(device.id)
   // Only the app's own photo folders. Database backups are left alone, so a restore can undo this.
   await Promise.all(['orig', 'v', 'tmp'].map(folder => emptyFolder(picturesPath(folder))))
   return before

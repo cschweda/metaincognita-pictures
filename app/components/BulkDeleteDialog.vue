@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // Deleting more than one photo: shows which ones, waits, and needs the count typed by hand and the
-// password. One photo keeps its single confirmation; everything at once is Start over.
-const props = defineProps<{ ids: string[] }>()
+// password. One photo keeps its single confirmation; everything at once is Start over. With `demo`,
+// it removes the demo photos instead, through their own route, with the same checks.
+const props = defineProps<{ ids: string[], demo?: boolean }>()
 const emit = defineEmits<{ deleted: [count: number] }>()
+const noun = computed(() => props.demo ? 'demo photos' : 'photos')
 const open = defineModel<boolean>('open', { default: false })
 
 const WAIT_SECONDS = 5
-const phrase = computed(() => `delete ${props.ids.length} photos`)
+const phrase = computed(() => `delete ${props.ids.length} ${noun.value}`)
 const typed = ref('')
 const password = ref('')
 const countdown = ref(WAIT_SECONDS)
@@ -45,13 +47,11 @@ async function confirm() {
   working.value = true
   error.value = ''
   try {
-    const { deleted } = await $fetch<{ deleted: number }>('/api/photos/delete', {
-      method: 'POST',
-      headers: apiHeaders,
-      body: { photo_ids: props.ids, phrase: typed.value, password: password.value },
-    })
+    const result = props.demo
+      ? await $fetch<{ removed: number }>('/api/demo/remove', { method: 'POST', headers: apiHeaders, body: { phrase: typed.value, password: password.value } })
+      : await $fetch<{ deleted: number }>('/api/photos/delete', { method: 'POST', headers: apiHeaders, body: { photo_ids: props.ids, phrase: typed.value, password: password.value } })
     open.value = false
-    emit('deleted', deleted)
+    emit('deleted', 'removed' in result ? result.removed : result.deleted)
   }
   catch (failure) {
     error.value = (failure as { statusMessage?: string }).statusMessage ?? 'Nothing was deleted.'
@@ -64,7 +64,7 @@ async function confirm() {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="`Delete ${ids.length} photos?`" :dismissible="!working" description="This can't be undone">
+  <UModal v-model:open="open" :title="`Delete ${ids.length} ${noun}?`" :dismissible="!working" description="This can't be undone">
     <template #body>
       <form class="flex flex-col gap-4" @submit.prevent="confirm">
         <ul class="grid grid-cols-6 gap-1" aria-label="Photos that will be deleted">
@@ -74,7 +74,8 @@ async function confirm() {
         </ul>
         <p v-if="ids.length > 18" class="-mt-2 text-sm text-muted">and {{ ids.length - 18 }} more</p>
         <p class="text-lg">
-          These <strong>{{ ids.length }} photos</strong> will be deleted from the server, originals and all. They come out of every playlist, and off every frame. There's no undo.
+          <template v-if="demo">These <strong>{{ ids.length }} demo photos</strong>, and the demo's playlists, preset, and unused tags, will be deleted. Your own photos stay.</template>
+          <template v-else>These <strong>{{ ids.length }} photos</strong> will be deleted from the server, originals and all. They come out of every playlist, and off every frame. There's no undo.</template>
         </p>
         <p>To confirm, type <strong class="select-none font-mono" @copy.prevent>{{ phrase }}</strong> by hand. Pasting is turned off.</p>
         <UFormField label="Type the words above">
@@ -99,7 +100,7 @@ async function confirm() {
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <UButton size="lg" color="neutral" variant="soft" class="justify-center" autofocus :disabled="working" @click="open = false">Keep them</UButton>
           <UButton type="submit" size="lg" color="error" icon="i-lucide-trash-2" class="justify-center" :disabled="!ready" :loading="working">
-            {{ countdown > 0 ? `Delete ${ids.length} photos (${countdown})` : `Delete ${ids.length} photos` }}
+            {{ countdown > 0 ? `Delete ${ids.length} ${noun} (${countdown})` : `Delete ${ids.length} ${noun}` }}
           </UButton>
         </div>
       </form>

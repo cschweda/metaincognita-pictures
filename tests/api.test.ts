@@ -53,8 +53,19 @@ async function pairDevice(name: string) {
   return { cookie: cookieFrom(poll), id: start.pairing_id as string }
 }
 
+// Stand-ins for the demo's photos, so demo tests never reach the internet. Named by Picsum id.
+const DEMO_IDS = [10, 11, 12, 15, 16, 20, 22, 24, 26, 27, 28, 29, 30, 37, 42, 48, 49, 54, 58, 60, 64, 65, 76, 83, 96,
+  100, 101, 102, 103, 104, 106, 107, 108, 109, 110, 111, 112, 113, 116, 117, 118, 119, 120, 121, 122, 124, 125, 126, 127, 128]
+let demoSource: string
+
 before(async () => {
   directory = mkdtempSync(join(tmpdir(), 'pictures-test-'))
+  demoSource = mkdtempSync(join(tmpdir(), 'pictures-demo-'))
+  const { writeFileSync } = await import('node:fs')
+  await Promise.all(DEMO_IDS.map(async (id) => {
+    const image = await sharp({ create: { width: 320, height: 200, channels: 3, background: { r: id, g: 255 - id, b: (id * 7) % 255 } } }).jpeg().toBuffer()
+    writeFileSync(join(demoSource, `${id}.jpg`), image)
+  }))
   server = spawn('node', ['.output/server/index.mjs'], {
     stdio: 'ignore',
     env: {
@@ -64,6 +75,9 @@ before(async () => {
       NUXT_DB_PATH: join(directory, 'test.db'),
       NUXT_PICTURES_DIR: directory,
       NUXT_ADMIN_PASSWORD_HASH: await argon2.hash(PASSWORD),
+      // This database starts empty, so without this it would load the demo at startup.
+      NUXT_DEMO_AUTOLOAD: 'false',
+      NUXT_DEMO_SOURCE_DIR: demoSource,
     },
   })
 
@@ -84,6 +98,7 @@ before(async () => {
 after(() => {
   server.kill()
   rmSync(directory, { recursive: true, force: true })
+  rmSync(demoSource, { recursive: true, force: true })
 })
 
 test('public routes answer without a login', async () => {
@@ -767,4 +782,114 @@ test('the nuclear option needs a token that has waited, the exact phrase, and th
   const { readdirSync } = await import('node:fs')
   assert.deepEqual([...readdirSync(join(directory, 'orig')), ...readdirSync(join(directory, 'v'))], [], 'photo files are gone from disk')
   assert.equal((await adminFetch('/api/auth/session')).status, 200, 'the admin stays logged in')
+})
+
+
+const waitForDemo = async (base: string, cookie: string) => {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const status = await (await fetch(`${base}/api/demo`, { headers: { cookie } })).json()
+    if (status.job.state !== 'loading') return status
+    await new Promise(resolve => setTimeout(resolve, 200))
+  }
+  throw new Error('The demo never finished loading')
+}
+
+test('demo mode: reloading replaces only a demo, the first upload goes live, and leftover demo photos can be removed', async () => {
+  // Start over has just emptied everything, so the app is back in demo mode.
+  assert.equal((await (await adminFetch('/api/demo')).json()).mode, 'demo')
+  assert.equal((await adminJson('/api/demo/load', 'POST', {})).status, 400, 'needs a confirmation')
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 200)
+  const loaded = await waitForDemo(BASE, admin)
+  assert.equal(loaded.job.state, 'done')
+  assert.equal(loaded.demo_photos, 15)
+  assert.equal(loaded.mode, 'demo')
+  const { playlists } = await (await adminFetch('/api/playlists')).json()
+  assert.deepEqual(playlists.map((p: { name: string }) => p.name).sort(), ['Kitchen', 'Living room'])
+  const { photos } = await (await adminFetch('/api/photos?limit=200')).json()
+  assert.ok(photos.some((p: { caption: string | null }) => p.caption), 'some demo photos have captions')
+  assert.ok(photos.every((p: { tags: unknown[] }) => p.tags.length > 0), 'every demo photo is tagged')
+
+  // Reloading in demo mode swaps in a fresh demo.
+  await adminJson('/api/demo/load', 'POST', { confirm: true })
+  assert.equal((await waitForDemo(BASE, admin)).demo_photos, 15)
+
+  // One photo of the owner's makes it live, and the demo can no longer be reloaded over it.
+  const { photo: mine } = await upload('#901010', 'mine.jpg')
+  const live = await (await adminFetch('/api/demo')).json()
+  assert.equal(live.mode, 'live')
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 409)
+
+  // Leftover demo photos come out with the typed count and the password, and the owner's photo stays.
+  assert.equal((await adminJson('/api/demo/remove', 'POST', { phrase: 'delete 15 photos', password: PASSWORD })).status, 400)
+  const removed = await adminJson('/api/demo/remove', 'POST', { phrase: 'delete 15 demo photos', password: PASSWORD })
+  assert.equal(removed.status, 200)
+  assert.equal((await removed.json()).removed, 15)
+  const left = (await (await adminFetch('/api/photos?limit=200')).json()).photos.map((p: { id: string }) => p.id)
+  assert.deepEqual(left, [mine.id])
+  assert.equal((await (await adminFetch('/api/playlists')).json()).playlists.length, 0)
+  assert.equal((await (await adminFetch('/api/demo')).json()).mode, 'live')
+})
+
+test('a brand-new install loads the demo by itself, once', async () => {
+  const port = 3196
+  const base = `http://127.0.0.1:${port}`
+  const fresh = mkdtempSync(join(tmpdir(), 'pictures-fresh-'))
+  const hash = await argon2.hash(PASSWORD)
+  const start = () => spawn('node', ['.output/server/index.mjs'], {
+    stdio: 'ignore',
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', NUXT_DB_PATH: join(fresh, 'test.db'), NUXT_PICTURES_DIR: fresh,
+      NUXT_ADMIN_PASSWORD_HASH: hash, NUXT_DEMO_SOURCE_DIR: demoSource },
+  })
+  const up = async () => {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      if (await fetch(`${base}/api/health`).then(response => response.ok, () => false)) return
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+  let instance = start()
+  try {
+    await up()
+    const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) })
+    const cookie = cookieFrom(login)
+    const status = await waitForDemo(base, cookie)
+    assert.equal(status.mode, 'demo')
+    assert.equal(status.demo_photos, 15, 'the demo loaded on first launch')
+
+    // Emptied and restarted, it doesn't load the demo again on its own.
+    instance.kill()
+    await new Promise(resolve => setTimeout(resolve, 300))
+    const { default: Database } = await import('better-sqlite3')
+    const database = new Database(join(fresh, 'test.db'))
+    database.exec(`DELETE FROM playlist_photos; DELETE FROM playlists; DELETE FROM photo_tags; DELETE FROM presets; DELETE FROM photos;`)
+    database.close()
+    instance = start()
+    await up()
+    const again = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: JSON_BODY, body: JSON.stringify({ password: PASSWORD }) })
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const after = await (await fetch(`${base}/api/demo`, { headers: { cookie: cookieFrom(again) } })).json()
+    assert.equal(after.job.state, 'idle')
+    assert.equal(after.photos, 0)
+  }
+  finally {
+    instance.kill()
+    rmSync(fresh, { recursive: true, force: true })
+  }
+})
+
+test('reloading the demo keeps paired frames, showing all photos', async () => {
+  // The previous test made this live and removed the demo. Start over, with the demo, gets back to demo mode.
+  const { cookie } = await pairDevice('Demo frame')
+  const { token, phrase } = await (await adminJson('/api/nuke/start', 'POST', {})).json()
+  await new Promise(resolve => setTimeout(resolve, 10_500))
+  const nuked = await (await adminJson('/api/nuke/confirm', 'POST', { token, phrase, password: PASSWORD, then_demo: true })).json()
+  assert.ok(nuked.job, 'Start over can load the demo afterwards')
+  await waitForDemo(BASE, admin)
+  assert.equal((await fetch(`${BASE}/api/frame/config`, { headers: { cookie } })).status, 401, 'Start over removes frames')
+
+  const second = await pairDevice('Kept frame')
+  assert.equal((await adminJson('/api/demo/load', 'POST', { confirm: true })).status, 200)
+  await waitForDemo(BASE, admin)
+  assert.equal((await fetch(`${BASE}/api/frame/config`, { headers: { cookie: second.cookie } })).status, 200, 'a demo reload keeps frames paired')
+  const playlist = await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie: second.cookie } })).json()
+  assert.equal(playlist.photos.length, 15)
 })

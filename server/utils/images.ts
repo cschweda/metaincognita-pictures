@@ -85,8 +85,9 @@ export function cleanTagName(value: unknown): string {
   return name
 }
 
-function tagIds(names: string[]): string[] {
-  const insert = db.prepare(`INSERT OR IGNORE INTO tags (id, name) VALUES (?, ?)`)
+/** Finds or creates tags by name. Tags the demo creates are marked, so removing the demo removes them. */
+function tagIds(names: string[], demo = false): string[] {
+  const insert = db.prepare(`INSERT OR IGNORE INTO tags (id, name, demo) VALUES (?, ?, ${demo ? 1 : 0})`)
   const find = db.prepare<[string], { id: string }>(`SELECT id FROM tags WHERE name = ?`)
   return names.map((name) => {
     insert.run(ulid(), name)
@@ -100,7 +101,13 @@ export type UploadResult =
   | { status: 'rejected', error: string }
 
 /** Runs one uploaded temp file through the pipeline in Doc 00 §6. The caller owns the temp file. */
-export function ingestPhoto(tempPath: string, filename: string, tags: string[]): Promise<UploadResult> {
+export interface IngestOptions {
+  /** A sample photo from demo mode. Anything else is the owner's, and switches the app to live. */
+  demo?: boolean
+  caption?: string | null
+}
+
+export function ingestPhoto(tempPath: string, filename: string, tags: string[], options: IngestOptions = {}): Promise<UploadResult> {
   return enqueue(async () => {
     const metadata = await sharp(tempPath).metadata().catch(() => null)
     const heic = await isHeic(tempPath)
@@ -141,13 +148,15 @@ export function ingestPhoto(tempPath: string, filename: string, tags: string[]):
       await writeVariants(source, id, picturesPath('v'))
 
       const photo = db.transaction(() => {
-        const row = db.prepare<[string, string, number, number, string | null, string], Photo>(
-          `INSERT INTO photos (id, filename, width, height, taken_at, hash, position)
-           VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM photos))
+        const row = db.prepare<[string, string, number, number, string | null, string, number, string | null], Photo>(
+          `INSERT INTO photos (id, filename, width, height, taken_at, hash, demo, caption, position)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM photos))
            RETURNING *`,
-        ).get(id, filename, width, height, readTakenAt(metadata.exif), hash)!
+        ).get(id, filename, width, height, readTakenAt(metadata.exif), hash, options.demo ? 1 : 0, options.caption ?? null)!
         const link = db.prepare(`INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)`)
-        for (const tagId of tagIds(tags)) link.run(id, tagId)
+        for (const tagId of tagIds(tags, options.demo)) link.run(id, tagId)
+        // The owner's first photo ends demo mode for good.
+        if (!options.demo) db.prepare(`INSERT INTO settings (key, value) VALUES ('mode', 'live') ON CONFLICT (key) DO UPDATE SET value = 'live'`).run()
         return row
       })()
 

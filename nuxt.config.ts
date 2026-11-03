@@ -63,7 +63,7 @@ export default defineNuxtConfig({
     '/sw.js': { headers: { 'Cache-Control': 'no-cache' } },
     '/admin/photos': { redirect: '/admin' },
   },
-  runtimeConfig: { adminPasswordHash: '', dbPath: '', picturesDir: '', build },
+  runtimeConfig: { adminPasswordHash: '', dbPath: '', picturesDir: '', build, demoAutoload: true, demoSourceDir: '' },
   security: {
     nonce: true,
     sri: false, // Everything is self-hosted, and a stale hash blocks the whole page.

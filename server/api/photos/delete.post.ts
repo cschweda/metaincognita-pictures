@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
     console.warn(`[photos] bulk delete wrong password ip=${ip}`)
     throw createError({ statusCode: 401, statusMessage: 'Wrong password' })
   }
+  clearLoginAttempts(ipBucket(ip)) // A correct password counts like a login.
 
   let deleted = 0
   for (const id of ids) if (await deletePhoto(id)) deleted++
