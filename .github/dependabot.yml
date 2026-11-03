@@ -7,6 +7,10 @@ updates:
     groups:
       dependencies:
         patterns: ['*']
+    ignore:
+      # TypeScript 7 is the native compiler rewrite; wait until vue-tsc supports it.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -15,3 +19,8 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # Move Node majors by hand, with .nvmrc and engines, once argon2, better-sqlite3,
+      # and sharp ship prebuilt binaries for the new version.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
