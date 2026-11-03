@@ -112,6 +112,8 @@ docker compose up -d
 
 Open `https://your-domain/login` to sign in. The first time it starts, OpenMantel fetches 15 sample photos from [Lorem Picsum](https://picsum.photos), which sources them from Unsplash, so you can try it right away. Set `NUXT_DEMO_AUTOLOAD=false` in `.env` to start with an empty library instead. With Docker, a database snapshot is taken every day and kept for 14 days.
 
+`latest` follows main. To update only when you choose, set `OPENMANTEL_VERSION=0.1` in `.env` to stay on the 0.1 [release](https://github.com/cschweda/openmantel/releases) and its fixes.
+
 The [self-hosting guide](docs/self-hosting.md) covers homelab setups, updating, backups and restores, running without Docker under pm2, and troubleshooting.
 
 ## Setting up a frame

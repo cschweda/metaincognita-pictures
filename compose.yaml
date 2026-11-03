@@ -1,7 +1,8 @@
 # Copy .env.example to .env, fill it in, then run: docker compose up -d
 services:
   app:
-    image: ghcr.io/cschweda/openmantel:latest
+    # latest follows main. Set OPENMANTEL_VERSION in .env (for example 0.1 or 0.1.0) to stay on a release.
+    image: ghcr.io/cschweda/openmantel:${OPENMANTEL_VERSION:-latest}
     build: .
     restart: unless-stopped
     env_file: .env
@@ -30,7 +31,7 @@ services:
 
   # Takes a checked database snapshot at start and every 24 hours, and keeps 14 days of them.
   backup:
-    image: ghcr.io/cschweda/openmantel:latest
+    image: ghcr.io/cschweda/openmantel:${OPENMANTEL_VERSION:-latest}
     build: .
     restart: unless-stopped
     env_file: .env

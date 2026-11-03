@@ -37,7 +37,7 @@
     "vue": "^3.5.44",
     "vue-router": "^5.4.0"
   },
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "packageManager": "pnpm@12.16.1",
   "engines": {

@@ -41,6 +41,11 @@ docker compose up -d
 
 Database migrations run at startup.
 
+`latest` follows every change on main. To update only when you choose, pin a release in `.env`:
+`OPENMANTEL_VERSION=0.1` takes any 0.1.x fix, and `OPENMANTEL_VERSION=0.1.0` stays on exactly that
+one. Change it to move to a newer release, then run the commands above. The
+[releases page](https://github.com/cschweda/openmantel/releases) lists each version and what changed.
+
 ## Backups
 
 Your data is in the `pictures` volume: `pictures.db`, `orig/` for original photos, and `v/` for frame images.

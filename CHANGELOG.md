@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-03
+
+The first tagged release. Docker images are published as `0.1.0`, `0.1`, and `latest`.
+
 ### Added
 
 - Optional two-factor login, off by default. Turn it on from Security, under More, with your password, a QR code for Google Authenticator or any authenticator app, and one code to confirm. Ten one-time recovery codes are shown once. Logging in then asks for the 6-digit code after the password, and five wrong codes lock out for five minutes, with no more than ten wrong codes an hour checked in all. Turning it off needs the password and a code. `pnpm security:reset-2fa` turns it off from the server if the phone and codes are both lost.
@@ -179,3 +183,6 @@ All notable changes to this project are documented here. The format is based on 
 - Frame cards no longer overflow on phones, and a new frame's thumbnail appears right away.
 - `/api/pair/approve` is no longer covered by the public route exemption.
 - `rebuild.sh` no longer exits when its log or backup folder is empty.
+
+[Unreleased]: https://github.com/cschweda/openmantel/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/cschweda/openmantel/releases/tag/v0.1.0

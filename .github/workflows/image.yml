@@ -4,14 +4,18 @@
 # hung inside nuxt build until GitHub cancelled them at 6 hours, so latest went stale.
 name: image
 
+# Every push to main publishes latest. A version tag such as v0.1.0 publishes 0.1.0 and 0.1, for
+# owners who'd rather update on purpose than follow main.
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   workflow_dispatch:
 
-# A slow build must not finish after a newer one and overwrite latest with older code.
+# A slow build must not finish after a newer one and overwrite latest with older code. Grouped by
+# ref, so a tag pushed with its commit doesn't cancel the main build.
 concurrency:
-  group: image
+  group: image-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -62,7 +66,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Points latest at both architectures, only once both have built.
+  # Points the tags at both architectures, only once both have built.
   publish:
     needs: build
     runs-on: ubuntu-24.04
@@ -79,11 +83,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag latest and the commit
+      - name: Tag the version, or latest, and the commit
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create \
-            -t "$IMAGE:latest" \
-            -t "$IMAGE:sha-${GITHUB_SHA::7}" \
-            $(printf "$IMAGE@sha256:%s " *)
-      - run: docker buildx imagetools inspect "$IMAGE:latest"
+          tags=(-t "$IMAGE:sha-${GITHUB_SHA::7}")
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Not a release version: $GITHUB_REF_NAME" >&2
+              exit 1
+            fi
+            tags+=(-t "$IMAGE:$version" -t "$IMAGE:${version%.*}")
+          else
+            tags+=(-t "$IMAGE:latest")
+          fi
+          docker buildx imagetools create "${tags[@]}" $(printf "$IMAGE@sha256:%s " *)
+          echo "PRIMARY=${tags[3]}" >> "$GITHUB_ENV"
+      - run: docker buildx imagetools inspect "$PRIMARY"
