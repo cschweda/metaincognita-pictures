@@ -89,6 +89,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- README describes live frame state, new photos playing next, and the login protection.
 - The Frames page thumbnail follows the frame's photo within seconds: frames report every photo change, pause, and resume, and the page refreshes every 5 seconds while it's open.
 - New photos play next on frames that include them, instead of waiting for their turn, and a deleted or hidden photo leaves the screen at once. Regenerating the demo now shows on frames within a couple of seconds.
 - The login lockout counts an attempt before checking the password, so guesses sent all at once can't slip past it, and a flood of wrong guesses from many addresses limits unknown browsers (one try per address shared with its /24 or /48, at most 30 attempts a minute) while browsers that have logged in before skip those limits, so the owner is never locked out.
