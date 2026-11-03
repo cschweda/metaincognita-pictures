@@ -1,4 +1,36 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+
+// What the Technical details page reports. Docker has no .git, so its build passes GIT_COMMIT.
+const require = createRequire(import.meta.url)
+const packageVersion = (name: string) => {
+  try {
+    return (JSON.parse(readFileSync(require.resolve(`${name}/package.json`), 'utf8')) as { version: string }).version
+  }
+  catch {
+    return 'unknown'
+  }
+}
+const gitCommit = () => {
+  try {
+    return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  }
+  catch {
+    return ''
+  }
+}
+const build = {
+  version: (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version,
+  commit: process.env.GIT_COMMIT || gitCommit(),
+  builtAt: new Date().toISOString(),
+  nuxt: packageVersion('nuxt'),
+  vue: packageVersion('vue'),
+  nuxtUi: packageVersion('@nuxt/ui'),
+  betterSqlite3: packageVersion('better-sqlite3'),
+  heicDecode: packageVersion('heic-decode'),
+}
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', 'nuxt-security'],
   css: ['~/assets/css/main.css'],
@@ -31,7 +63,7 @@ export default defineNuxtConfig({
     '/sw.js': { headers: { 'Cache-Control': 'no-cache' } },
     '/admin/photos': { redirect: '/admin' },
   },
-  runtimeConfig: { adminPasswordHash: '', dbPath: '', picturesDir: '' },
+  runtimeConfig: { adminPasswordHash: '', dbPath: '', picturesDir: '', build },
   security: {
     nonce: true,
     sri: false, // Everything is self-hosted, and a stale hash blocks the whole page.

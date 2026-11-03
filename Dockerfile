@@ -8,6 +8,9 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY . .
+# The Technical details page shows this, because .git isn't copied in.
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
 RUN pnpm install --frozen-lockfile && pnpm build
 
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 NUXT_DB_PATH=/data/pictures.db NUXT_PICTURES_DIR=/data

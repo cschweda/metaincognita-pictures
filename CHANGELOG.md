@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Technical details page in the admin, showing the version, commit, build time, Node, SQLite and schema migrations, library versions, and storage paths, with a summary to copy into bug reports. The Docker image records its commit for it.
+- GitHub link in the admin navigation.
 - Order for the admin slideshow, next to the tag dropdown: Random, the default, or Sequential, in your arranged order.
 - Rearrange view: a compact grid where you hold and drag, or tap a photo and tap where it goes. It replaces the drag handle on phones.
 - Captions on or off for each frame.
@@ -69,6 +71,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- README rewritten for accuracy and clarity.
 - Slideshows never stop. After the last photo they start again, with a fresh shuffle each time round in random order, and a new round never opens on the photo that just ended the last one.
 - A tagged admin slideshow now plays at random unless you choose Sequential. Before, it always played in your arranged order.
 - Frame setup scripts use OpenMantel names for their launch agents, services, and shortcuts, and clean up installs made under the old names. A Mac frame keeps its pairing.

@@ -393,3 +393,17 @@ test('a random frame reshuffles on every lap and always plays every photo', asyn
   await adminJson(`/api/devices/${id}`, 'PATCH', { sort: 'manual' })
   assert.deepEqual(await lapIds(3), await lapIds(0), 'a sequential order repeats as it is')
 })
+
+test('technical details are for admins only, and report the schema in use', async () => {
+  assert.equal((await fetch(`${BASE}/api/system`)).status, 401)
+  const { cookie } = await pairDevice('Curious')
+  assert.equal((await fetch(`${BASE}/api/system`, { headers: { cookie } })).status, 403)
+
+  const system = await (await adminFetch('/api/system')).json()
+  assert.match(system.runtime.node, /^v\d+/)
+  assert.match(system.libraries.sqlite, /^3\./)
+  assert.ok(system.database.migrations >= 6)
+  assert.match(system.database.latest_migration, /^\d{4}_.+\.sql$/)
+  assert.deepEqual(system.storage.variant_sizes, [640, 1280, 1920, 2560])
+  assert.match(system.app.commit ?? '', /^([0-9a-f]{40})?$/)
+})

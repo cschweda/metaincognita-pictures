@@ -10,7 +10,9 @@ const LINKS = [
   { label: 'Stats', to: '/admin/stats' },
   { label: 'Pair a frame', to: '/admin/pair' },
   { label: 'Sessions', to: '/admin/sessions' },
+  { label: 'Technical details', to: '/admin/technical' },
 ]
+const { repository } = useAppConfig()
 
 const heroPhotos = ref<string[]>([])
 const count = ref<number | null>(null)
@@ -71,6 +73,16 @@ async function logout() {
         >
           {{ link.label }}
         </NuxtLink>
+        <a
+          :href="repository"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded px-3 py-2 font-medium text-muted hover:text-default"
+        >
+          GitHub
+          <UIcon name="i-lucide-external-link" class="size-4" aria-hidden="true" />
+          <span class="sr-only">(opens in a new tab)</span>
+        </a>
         <button type="button" class="rounded px-3 py-2 font-medium text-muted hover:text-default" @click="logout">
           Log out
         </button>
