@@ -16,13 +16,18 @@ const heroPhotos = ref<string[]>([])
 const count = ref<number | null>(null)
 
 const tagFilter = useTagFilter()
+const order = useSlideshowOrder()
+const ORDERS = [
+  { label: 'Random', value: 'random' },
+  { label: 'Sequential, in my order', value: 'sequential' },
+]
 const { tags, loadTags } = useTags()
 
 const tagName = computed(() => tagFilter.value === 'memories'
   ? 'On this day'
   : tags.value.find(tag => tag.id === tagFilter.value)?.name)
 const tagItems = computed(() => [
-  { label: 'No tag: all photos, random order', value: 'all' },
+  { label: 'No tag: all photos', value: 'all' },
   { label: 'On this day', value: 'memories' },
   ...tags.value.map(tag => ({ label: `${tag.name} (${tag.photos ?? 0})`, value: tag.id })),
 ])
@@ -74,15 +79,25 @@ async function logout() {
 
     <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
       <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" />
-      <UFormField label="Show photos tagged" class="max-w-xl">
-        <USelect
-          :model-value="tagFilter || 'all'"
-          :items="tagItems"
-          size="lg"
-          class="w-full"
-          @update:model-value="tagFilter = $event === 'all' ? '' : String($event)"
-        />
-      </UFormField>
+      <div class="grid gap-3 sm:grid-cols-[minmax(0,36rem)_minmax(0,16rem)]">
+        <UFormField label="Show photos tagged">
+          <USelect
+            :model-value="tagFilter || 'all'"
+            :items="tagItems"
+            size="lg"
+            class="w-full"
+            @update:model-value="tagFilter = $event === 'all' ? '' : String($event)"
+          />
+        </UFormField>
+        <UFormField label="Order" help="Starts again after the last photo">
+          <USelect
+            v-model="order"
+            :items="ORDERS"
+            size="lg"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
     </section>
 
     <main class="flex flex-col gap-5">

@@ -13,8 +13,9 @@ const ORDER: Record<string, string> = {
   random: 'id',
 }
 
-// Seeded by the device, so paging stays stable and frames don't all show the same order.
-// An admin's slideshow sends a new seed for each start.
+// Seeded by the device and the lap, so paging within a lap stays stable, frames don't all show
+// the same order, and each time round is shuffled afresh. An admin's slideshow sends a new seed
+// for each start.
 function shuffled(entries: Entry[], seed: string): Entry[] {
   let state = createHash('sha256').update(seed).digest().readUInt32LE(0)
   const next = () => {
@@ -43,9 +44,11 @@ export default defineEventHandler((event) => {
   const device = event.context.device
   const query = getQuery(event)
   const limit = Math.min(Math.max(Number(query.limit) || 200, 1), 200)
-  // In an admin's browser, a chosen tag plays in the arranged order, and no tag plays everything at random.
+  // An admin's slideshow plays at random unless the admin picks the arranged order.
   const tag = !device && typeof query.tag === 'string' && query.tag ? query.tag : null
-  const sort = !device ? (tag ? 'manual' : 'random') : device.sort in ORDER ? device.sort : 'random'
+  const sort = !device ? (query.order === 'sequential' ? 'manual' : 'random') : device.sort in ORDER ? device.sort : 'random'
+  // The frame counts each time it starts the playlist again, so a random order is new every lap.
+  const lap = Math.max(Math.floor(Number(query.lap) || 0), 0)
 
   const clause = tag === MEMORIES_FILTER
     ? { sql: MEMORIES_SQL, params: [] }
@@ -61,7 +64,7 @@ export default defineEventHandler((event) => {
     `SELECT id, caption, ${MEMORIES_SQL} AS memory FROM photos
      WHERE hidden = 0 AND ${clause.sql} ${shapeSql} ORDER BY ${ORDER[sort]}`,
   ).all(...clause.params)
-  const entries: Entry[] = sort === 'random' ? shuffled(rows, device?.id ?? String(query.seed ?? 'admin')) : rows
+  const entries: Entry[] = sort === 'random' ? shuffled(rows, `${device?.id ?? String(query.seed ?? 'admin')}:${lap}`) : rows
 
   // Photos from today's date in past years come first, in their usual order.
   if (device?.memories_first) entries.sort((a, b) => Number(b.memory ?? 0) - Number(a.memory ?? 0))

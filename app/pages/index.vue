@@ -53,6 +53,7 @@ let reloadTimer: ReturnType<typeof setTimeout> | undefined
 let failures = 0
 let paused = false
 let scheduled = false
+let lap = 0 // Each time the playlist starts again. A random order is reshuffled every lap.
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
@@ -70,9 +71,9 @@ let firstPhoto = route.query.photo // Only the first load opens on the clicked p
 
 async function fetchPage(after?: string, useSchedule = scheduled) {
   const options = config.value?.preview
-    ? { tag: route.query.tag, seed: previewSeed, first: firstPhoto }
+    ? { tag: route.query.tag, order: route.query.order, seed: previewSeed, first: firstPhoto }
     : { scheduled: useSchedule ? 1 : undefined }
-  return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, ...options } })
+  return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, lap, ...options } })
 }
 
 async function reloadPlaylist() {
@@ -83,6 +84,10 @@ async function reloadPlaylist() {
   entries = page.photos
   nextPage = page.next
   cursor = 0
+  // A new lap must not open on the photo that ended the last one.
+  if (entries.length > 1 && entries[0]!.id === slides[active.value]?.id) {
+    ;[entries[0], entries[1]] = [entries[1]!, entries[0]!]
+  }
   empty.value = entries.length === 0
   if (entries.length) sendToWorker({ type: 'listed', urls: entries.map(entry => new URL(url(entry.id)!, location.origin).pathname) })
   warmNext()
@@ -136,7 +141,9 @@ async function advance() {
   sleeping.value = inSleepWindow()
   if (sleeping.value) return schedule(RETRY_MS)
 
+  // The slideshow never ends: after the last photo it starts again, in a new random order or the same sequence.
   if (cursor >= entries.length) {
+    lap++
     try {
       await reloadPlaylist()
       if (empty.value) return schedule(RETRY_MS)

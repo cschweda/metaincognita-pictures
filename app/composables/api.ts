@@ -52,9 +52,16 @@ export async function ensureTags(names: string[]): Promise<string[]> {
   return results.map(result => result.tag.id)
 }
 
-/** The tag chosen in the admin. Empty means every photo, in random order. */
+/** The tag chosen in the admin. Empty means every photo. */
 export function useTagFilter() {
   return useState('tag-filter', () => '')
+}
+
+export type SlideshowOrder = 'random' | 'sequential'
+
+/** How the admin's slideshow plays. Either way it starts again after the last photo. */
+export function useSlideshowOrder() {
+  return useState<SlideshowOrder>('slideshow-order', () => 'random')
 }
 
 /** The tag list, shared so a new tag appears everywhere at once. */

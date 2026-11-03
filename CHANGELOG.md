@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Order for the admin slideshow, next to the tag dropdown: Random, the default, or Sequential, in your arranged order.
 - Rearrange view: a compact grid where you hold and drag, or tap a photo and tap where it goes. It replaces the drag handle on phones.
 - Captions on or off for each frame.
 - Schedules: a frame can switch to a preset on chosen days and times, using its own clock.
@@ -68,6 +69,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Slideshows never stop. After the last photo they start again, with a fresh shuffle each time round in random order, and a new round never opens on the photo that just ended the last one.
+- A tagged admin slideshow now plays at random unless you choose Sequential. Before, it always played in your arranged order.
 - Frame setup scripts use OpenMantel names for their launch agents, services, and shortcuts, and clean up installs made under the old names. A Mac frame keeps its pairing.
 - `pnpm seed:ingest` reads `OPENMANTEL_PASSWORD` and `OPENMANTEL_SESSION`. The old `PICTURES_` names still work.
 - The prebuilt image builds each architecture on its own native runner, with a 30-minute limit, and is also tagged with the commit. Emulated arm64 builds were hanging, so `latest` had stopped updating.

@@ -250,6 +250,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 - **Captions** are optional. When a photo has one, it shows as small white text centered in a semi-transparent black band across the full width of the screen at the bottom, so it stays readable on any photo or matte. Photos without a caption show nothing.
 - Two stacked `<img>` layers; next image preloaded, 1-second cross-fade. Respects `prefers-reduced-motion`.
 - Fetches the first playlist page on load and on SSE `playlist-changed`; fetches the next page when within 20 ids of the end; advances every `interval_sec`.
+- Never stops. After the last photo it starts again. It sends a `lap` count with each playlist request, and the shuffle is seeded by device id and lap, so a random order is new each time round, while the sequential orders repeat as they are. A new lap never opens on the photo that just ended the last one.
 - Sleep window: renders solid black and stops fetching. Frame stays paired.
 - Offline resilience: if a fetch fails, keep cycling the local cache; show a small dim dot in a corner so you know it's offline.
 - Self-reloads every 6 hours (Chromium memory hygiene) and on SSE `reload`.
@@ -259,7 +260,7 @@ Upload also works from the phone (share sheet → browser → upload form with t
 
 **Start slideshow** at the top of the admin plays in that browser with no pairing, using the same page as a frame. The admin session may read `GET /api/frame/config` and `GET /api/frame/playlist`, and nothing else under `/api/frame/`.
 
-The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays in a new random order on each start, tagged or not. With a tag selected, only photos with that tag play, in the arranged order. Clicking a thumbnail opens the slideshow on that photo.
+The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays, tagged or not; with a tag selected, only photos with that tag play. The **Order** dropdown beside it picks **Random** (the default), a new shuffle on each start, or **Sequential**, the arranged order. Clicking a thumbnail opens the slideshow on that photo.
 
 The left and right arrow keys change photos, on frames too. Esc leaves the slideshow and returns to the admin; in full screen the browser keeps Esc for itself, so leaving full screen does the same.
 

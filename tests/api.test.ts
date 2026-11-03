@@ -360,3 +360,36 @@ test('deleting a tag removes it from filters, and renaming keeps them', async ()
   const cleared = await (await adminFetch('/api/presets')).json()
   assert.deepEqual(cleared.presets.find((item: { id: string }) => item.id === preset.id).filter.tags, [])
 })
+
+test('an admin slideshow plays at random by default, or sequentially in the arranged order', async () => {
+  for (let i = 0; i < 6; i++) await upload(`#2${i}2${i}2${i}`, `order-${i}.jpg`, 'ordered')
+  const { tags } = await (await adminFetch('/api/tags')).json()
+  const tag = tags.find((item: { name: string }) => item.name === 'ordered').id
+  const ids = async (query: string) =>
+    (await (await adminFetch(`/api/frame/playlist?tag=${tag}&${query}`)).json()).photos.map((p: { id: string }) => p.id).join()
+
+  const sequential = await ids('order=sequential&seed=a')
+  assert.equal(await ids('order=sequential&seed=b'), sequential, 'the arranged order does not depend on the seed')
+  const { photos } = await (await adminFetch(`/api/photos?tag=${tag}`)).json()
+  assert.equal(sequential, photos.map((p: { id: string }) => p.id).join(), 'it matches the grid')
+
+  const shuffles = await Promise.all(['1', '2', '3', '4', '5'].map(seed => ids(`seed=${seed}`)))
+  assert.ok(shuffles.some(order => order !== sequential), 'with no order given, a chosen tag plays at random')
+})
+
+test('a random frame reshuffles on every lap and always plays every photo', async () => {
+  const { cookie } = await pairDevice('Laps')
+  const lapIds = async (lap: number) =>
+    (await (await fetch(`${BASE}/api/frame/playlist?lap=${lap}`, { headers: { cookie } })).json()).photos.map((p: { id: string }) => p.id)
+
+  const first = await lapIds(0)
+  assert.deepEqual(await lapIds(0), first, 'a lap is stable, so paging within it works')
+  const later = await Promise.all([1, 2, 3, 4, 5].map(lapIds))
+  for (const lap of later) assert.deepEqual([...lap].sort(), [...first].sort(), 'every lap has every photo')
+  assert.ok(later.some(lap => lap.join() !== first.join()), 'later laps are shuffled differently')
+
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Laps')
+  await adminJson(`/api/devices/${id}`, 'PATCH', { sort: 'manual' })
+  assert.deepEqual(await lapIds(3), await lapIds(0), 'a sequential order repeats as it is')
+})

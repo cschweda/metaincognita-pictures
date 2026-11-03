@@ -2,6 +2,7 @@
 // The main action: a gold wall with the library's real photos in a dark matte.
 const props = defineProps<{ photos: string[], count: number | null, tagName?: string }>()
 const tagFilter = useTagFilter()
+const order = useSlideshowOrder()
 const shown = ref(0)
 let timer: ReturnType<typeof setInterval> | undefined
 
@@ -19,13 +20,14 @@ const detail = computed(() => {
   if (props.count === 0 && memories) return 'No photos from this date yet'
   if (props.count === 0) return props.tagName ? `No photos are tagged ${props.tagName}` : 'Add photos first'
   const photos = `${props.count} ${props.count === 1 ? 'photo' : 'photos'}`
-  if (memories) return `${photos} from this date`
-  return props.tagName ? `${photos} tagged ${props.tagName}` : `All ${photos} in random order`
+  const how = order.value === 'random' ? 'in random order' : 'in your order'
+  if (memories) return `${photos} from this date, ${how}`
+  return props.tagName ? `${photos} tagged ${props.tagName}, ${how}` : `All ${photos} ${how}`
 })
 
 async function start() {
   await document.documentElement.requestFullscreen?.().catch(() => undefined)
-  await navigateTo({ path: '/', query: tagFilter.value ? { tag: tagFilter.value } : {} })
+  await navigateTo({ path: '/', query: { tag: tagFilter.value || undefined, order: order.value } })
 }
 </script>
 
