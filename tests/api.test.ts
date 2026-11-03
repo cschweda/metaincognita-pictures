@@ -407,3 +407,126 @@ test('technical details are for admins only, and report the schema in use', asyn
   assert.deepEqual(system.storage.variant_sizes, [640, 1280, 1920, 2560])
   assert.match(system.app.commit ?? '', /^([0-9a-f]{40})?$/)
 })
+
+test('playlists hold hand-picked photos in their own order, and can be renamed and deleted', async () => {
+  const a = (await upload('#311111', 'pl-a.jpg')).photo
+  const b = (await upload('#113111', 'pl-b.jpg')).photo
+  const c = (await upload('#111131', 'pl-c.jpg')).photo
+
+  assert.equal((await fetch(`${BASE}/api/playlists`)).status, 401)
+  assert.equal((await adminJson('/api/playlists', 'POST', { name: '' })).status, 400)
+  const created = await adminJson('/api/playlists', 'POST', { name: 'Living room', photo_ids: [c.id, a.id] })
+  assert.equal(created.status, 200)
+  const { playlist } = await created.json()
+  assert.equal(playlist.photos, 2)
+  assert.equal(playlist.cover, c.id)
+  assert.equal((await adminJson('/api/playlists', 'POST', { name: 'living ROOM' })).status, 409, 'names are unique, ignoring case')
+
+  const order = async () =>
+    (await (await adminFetch(`/api/playlists/${playlist.id}/photos`)).json()).photos.map((p: { id: string }) => p.id)
+  assert.deepEqual(await order(), [c.id, a.id])
+
+  const added = await (await adminJson(`/api/playlists/${playlist.id}/photos`, 'POST', { photo_ids: [a.id, b.id, 'nope'] })).json()
+  assert.equal(added.added, 1, 'photos already in it, and unknown ids, are skipped')
+  assert.deepEqual(await order(), [c.id, a.id, b.id], 'new photos go on the end')
+
+  assert.equal((await adminJson(`/api/playlists/${playlist.id}/order`, 'POST', { photo_ids: [a.id, b.id] })).status, 409, 'an order must hold every photo')
+  assert.equal((await adminJson(`/api/playlists/${playlist.id}/order`, 'POST', { photo_ids: [b.id, c.id, a.id] })).status, 200)
+  assert.deepEqual(await order(), [b.id, c.id, a.id])
+
+  await adminJson(`/api/playlists/${playlist.id}/remove`, 'POST', { photo_ids: [c.id] })
+  assert.deepEqual(await order(), [b.id, a.id])
+  const library = await (await adminFetch('/api/photos?limit=200')).json()
+  assert.ok(library.photos.some((p: { id: string }) => p.id === c.id), 'taking a photo out keeps it in the library')
+
+  const renamed = await (await adminJson(`/api/playlists/${playlist.id}`, 'PATCH', { name: 'Den' })).json()
+  assert.equal(renamed.playlist.name, 'Den')
+
+  await adminFetch(`/api/photos/${a.id}`, { method: 'DELETE', headers: CSRF })
+  assert.deepEqual(await order(), [b.id], 'deleting a photo from the library takes it out of playlists')
+
+  assert.equal((await adminFetch(`/api/playlists/${playlist.id}`, { method: 'DELETE', headers: CSRF })).status, 200)
+  assert.equal((await adminFetch(`/api/playlists/${playlist.id}/photos`)).status, 404)
+})
+
+test('a frame can show a playlist, in its order or shuffled, and its schedule still wins', async () => {
+  const x = (await upload('#411111', 'fp-x.jpg')).photo
+  const y = (await upload('#114111', 'fp-y.jpg')).photo
+  const z = (await upload('#111141', 'fp-z.jpg')).photo
+  const { playlist } = await (await adminJson('/api/playlists', 'POST', { name: 'Kitchen picks', photo_ids: [z.id, x.id, y.id] })).json()
+
+  const { cookie } = await pairDevice('Playlist frame')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Playlist frame')
+  const ids = async (query = '') =>
+    (await (await fetch(`${BASE}/api/frame/playlist${query}`, { headers: { cookie } })).json()).photos.map((p: { id: string }) => p.id)
+
+  assert.equal((await adminJson(`/api/devices/${id}`, 'PATCH', { playlist_id: 'nope' })).status, 400)
+  const saved = await (await adminJson(`/api/devices/${id}`, 'PATCH', { playlist_id: playlist.id, sort: 'manual' })).json()
+  assert.equal(saved.device.playlist_id, playlist.id)
+  assert.deepEqual(await ids(), [z.id, x.id, y.id], 'My order is the playlist order')
+
+  await adminJson(`/api/devices/${id}`, 'PATCH', { sort: 'random' })
+  const laps = await Promise.all([0, 1, 2, 3, 4, 5].map(lap => ids(`?lap=${lap}`)))
+  for (const lap of laps) assert.deepEqual([...lap].sort(), [x.id, y.id, z.id].sort(), 'random plays just the playlist')
+
+  await adminJson(`/api/photos/${x.id}`, 'PATCH', { hidden: true })
+  assert.ok(!(await ids()).includes(x.id), 'hidden photos are skipped')
+
+  const { tags } = await (await adminFetch('/api/tags')).json()
+  const scheduledTag = tags.find((tag: { name: string }) => tag.name === 'scheduled')
+  const { preset } = await (await adminJson('/api/presets', 'POST', { name: 'Playlist schedule', filter: { tags: [scheduledTag.id], mode: 'any' } })).json()
+  await adminJson(`/api/devices/${id}`, 'PATCH', { schedule_preset_id: preset.id })
+  const during = await ids('?scheduled=1')
+  assert.ok(during.length > 0 && !during.includes(y.id), 'the scheduled preset replaces the playlist at its times')
+
+  // The admin's own slideshow can play a playlist too.
+  const preview = await (await adminFetch(`/api/frame/playlist?playlist=${playlist.id}&order=sequential`)).json()
+  assert.deepEqual(preview.photos.map((p: { id: string }) => p.id), [z.id, y.id])
+
+  await adminFetch(`/api/playlists/${playlist.id}`, { method: 'DELETE', headers: CSRF })
+  const after = await (await adminFetch('/api/devices')).json()
+  assert.equal(after.devices.find((item: { id: string }) => item.id === id).playlist_id, null, 'deleting a playlist sends its frames back to tags')
+})
+
+test('Start slideshow can target one frame and leave the others as they were', async () => {
+  const p = (await upload('#511111', 'start-p.jpg')).photo
+  const q = (await upload('#115111', 'start-q.jpg')).photo
+  const { playlist } = await (await adminJson('/api/playlists', 'POST', { name: 'Start test', photo_ids: [q.id, p.id] })).json()
+  const living = await pairDevice('Living room')
+  await pairDevice('Kitchen untouched')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const livingId = devices.find((item: { name: string }) => item.name === 'Living room').id
+  const kitchenBefore = devices.find((item: { name: string }) => item.name === 'Kitchen untouched')
+
+  assert.equal((await adminJson('/api/slideshow/start', 'POST', { frame: livingId, show: '', order: 'backwards' })).status, 400)
+  assert.equal((await adminJson('/api/slideshow/start', 'POST', { frame: 'nope', show: '', order: 'random' })).status, 404)
+
+  const stream = await fetch(`${BASE}/api/frame/events`, { headers: { cookie: living.cookie } })
+  await new Promise(resolve => setTimeout(resolve, 100))
+  const started = await adminJson('/api/slideshow/start', 'POST', { frame: livingId, show: `playlist:${playlist.id}`, order: 'sequential' })
+  assert.equal(started.status, 200)
+  assert.deepEqual((await started.json()).started, ['Living room'])
+  const { value } = await stream.body!.getReader().read()
+  assert.match(new TextDecoder().decode(value), /event: control\ndata: restart/)
+  await stream.body?.cancel().catch(() => undefined)
+
+  const list = await (await fetch(`${BASE}/api/frame/playlist`, { headers: { cookie: living.cookie } })).json()
+  assert.deepEqual(list.photos.map((photo: { id: string }) => photo.id), [q.id, p.id], 'the frame plays the playlist in order')
+
+  const after = await (await adminFetch('/api/devices')).json()
+  const kitchenAfter = after.devices.find((item: { name: string }) => item.name === 'Kitchen untouched')
+  assert.deepEqual(
+    { filter: kitchenAfter.filter, sort: kitchenAfter.sort, playlist_id: kitchenAfter.playlist_id },
+    { filter: kitchenBefore.filter, sort: kitchenBefore.sort, playlist_id: kitchenBefore.playlist_id },
+    'other frames are left alone',
+  )
+
+  const all = await (await adminJson('/api/slideshow/start', 'POST', { frame: 'all', show: '', order: 'random' })).json()
+  assert.ok([...all.started, ...all.offline].includes('Kitchen untouched'), 'All frames reaches every frame')
+  const everywhere = await (await adminFetch('/api/devices')).json()
+  for (const device of everywhere.devices) {
+    assert.equal(device.playlist_id, null)
+    assert.equal(device.sort, 'random')
+  }
+})

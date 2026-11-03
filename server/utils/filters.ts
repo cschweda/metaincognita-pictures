@@ -29,6 +29,8 @@ export function validateFilter(value: unknown): PhotoFilter {
 /** Photos taken on today's month and day. */
 export const MEMORIES_SQL = `strftime('%m-%d', taken_at) = strftime('%m-%d', 'now')`
 export const MEMORIES_FILTER = 'memories'
+/** The admin's Show dropdown names a playlist as `playlist:<id>`. */
+export const PLAYLIST_PREFIX = 'playlist:'
 
 /** SQL for matching photos, with its parameters. An empty filter matches everything. */
 export function filterClause(filter: PhotoFilter): { sql: string, params: string[] } {

@@ -71,7 +71,7 @@ let firstPhoto = route.query.photo // Only the first load opens on the clicked p
 
 async function fetchPage(after?: string, useSchedule = scheduled) {
   const options = config.value?.preview
-    ? { tag: route.query.tag, order: route.query.order, seed: previewSeed, first: firstPhoto }
+    ? { tag: route.query.tag, playlist: route.query.playlist, order: route.query.order, seed: previewSeed, first: firstPhoto }
     : { scheduled: useSchedule ? 1 : undefined }
   return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, lap, ...options } })
 }
@@ -251,6 +251,12 @@ function listen() {
     else if (data === 'resume') {
       paused = false
       schedule(0)
+    }
+    // Started from the admin: new settings, so fetch the playlist now and begin at its first photo.
+    else if (data === 'restart') {
+      paused = false
+      lap++
+      reloadPlaylist().then(() => schedule(empty.value ? RETRY_MS : 0)).catch(() => schedule(RETRY_MS))
     }
   })
   // A closed stream can mean the frame was removed, and the heartbeat handles that.

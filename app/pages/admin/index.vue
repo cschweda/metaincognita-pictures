@@ -35,6 +35,15 @@ const onlineFrames = ref<Frame[]>([])
 const sentTo = ref('')
 const bulkCaption = ref('')
 const bulkDate = ref('')
+const NEW_PLAYLIST = 'new'
+const playlists = ref<Playlist[]>([])
+const playlistTarget = ref<string>(NEW_PLAYLIST)
+const newPlaylistName = ref('')
+const playlistNotice = ref<{ text: string, id: string } | null>(null)
+const playlistTargets = computed(() => [
+  ...playlists.value.map(playlist => ({ label: playlist.name, value: playlist.id })),
+  { label: 'A new playlist', value: NEW_PLAYLIST },
+])
 const confirmingArrange = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 watch(search, () => {
@@ -105,6 +114,56 @@ function bulkPatch(body: object) {
   )))
 }
 
+async function loadPlaylists() {
+  playlists.value = (await $fetch<{ playlists: Playlist[] }>('/api/playlists')).playlists
+  if (playlistTarget.value === NEW_PLAYLIST && playlists.value[0]) playlistTarget.value = playlists.value[0].id
+}
+
+/** Adds the selection, in grid order, to the end of a playlist, or starts a new one with it. */
+async function addToPlaylist() {
+  const ids = photos.value.filter(photo => selected.value.includes(photo.id)).map(photo => photo.id)
+  busy.value = true
+  problems.value = []
+  playlistNotice.value = null
+  try {
+    let playlist: Playlist | undefined
+    let added = ids.length
+    if (playlistTarget.value === NEW_PLAYLIST) {
+      const name = newPlaylistName.value.trim()
+      if (!name) {
+        problems.value.push('Give the new playlist a name.')
+        return
+      }
+      playlist = (await $fetch<{ playlist: Playlist }>('/api/playlists', { method: 'POST', headers, body: { name, photo_ids: ids } })).playlist
+      newPlaylistName.value = ''
+    }
+    else {
+      const result = await $fetch<{ added: number, playlist: Playlist }>(`/api/playlists/${playlistTarget.value}/photos`, {
+        method: 'POST',
+        headers,
+        body: { photo_ids: ids },
+      })
+      playlist = result.playlist
+      added = result.added
+    }
+    await loadPlaylists()
+    if (playlist) {
+      playlistTarget.value = playlist.id
+      const already = ids.length - added
+      playlistNotice.value = {
+        id: playlist.id,
+        text: `Added ${added} ${added === 1 ? 'photo' : 'photos'} to ${playlist.name}${already ? `. ${already} ${already === 1 ? 'was' : 'were'} already in it` : ''}.`,
+      }
+    }
+  }
+  catch (error) {
+    problems.value.push((error as { statusMessage?: string }).statusMessage ?? 'Couldn\'t add to the playlist.')
+  }
+  finally {
+    busy.value = false
+  }
+}
+
 function arrangeByDate() {
   if (!confirmingArrange.value) {
     confirmingArrange.value = true
@@ -117,6 +176,7 @@ function arrangeByDate() {
 onMounted(() => {
   loadPhotos()
   loadFrames()
+  loadPlaylists()
   if (!grid.value) return
   Sortable.create(grid.value, {
     handle: '[data-drag-handle]',
@@ -390,6 +450,19 @@ async function remove(photo: Photo) {
           <UButton type="submit" size="sm" variant="soft" :disabled="busy">Set</UButton>
         </form>
       </div>
+      <form class="flex flex-wrap items-end gap-2" @submit.prevent="addToPlaylist">
+        <UFormField label="Add to playlist" class="min-w-48 grow sm:grow-0">
+          <USelect v-model="playlistTarget" :items="playlistTargets" class="w-full" />
+        </UFormField>
+        <UFormField v-if="playlistTarget === NEW_PLAYLIST" label="New playlist name" class="min-w-48 grow">
+          <UInput v-model="newPlaylistName" name="new-playlist" maxlength="60" placeholder="Living room" class="w-full" />
+        </UFormField>
+        <UButton type="submit" size="sm" :disabled="busy">Add {{ selected.length }}</UButton>
+      </form>
+      <p v-if="playlistNotice" role="status" class="text-sm">
+        {{ playlistNotice.text }}
+        <NuxtLink :to="`/admin/playlists/${playlistNotice.id}`" class="text-primary underline underline-offset-2">Open the playlist</NuxtLink>
+      </p>
       <div class="flex flex-wrap gap-2">
         <UButton size="sm" :disabled="!bulkTags.length || busy" @click="applyTags('add')">Add tags</UButton>
         <UButton size="sm" variant="soft" :disabled="!bulkTags.length || busy" @click="applyTags('remove')">Remove tags</UButton>

@@ -190,6 +190,12 @@ The playlist endpoint turns the filter into one query (`EXISTS` for `any`, a `HA
 
 Presets store a named filter so a frame can be switched to "Holidays" with one tap instead of toggling tags.
 
+### Playlists
+
+A frame can show a **playlist** instead of its filter: a named, hand-picked set of photos in their own order (`playlists`, and `playlist_photos` with a 1-based `position`). `devices.playlist_id` points at it; while it is set, the frame's tags are ignored, except at the times its schedule shows its preset. Playlists are named and reusable rather than tied to one device, so they survive a frame being re-paired or moved to another room, and two frames can share one. On a playlist frame, `sort = manual` means the playlist's order; `random` shuffles just the playlist, freshly each lap. Deleting a playlist sends its frames back to their tags (`ON DELETE SET NULL`), and deleting a photo takes it out of every playlist. Changing a playlist's photos or order pushes `playlist-changed` to the frames showing it.
+
+The playlist page shows the playlist beside the library. Photos are dragged in from the library, dragged to reorder, and dragged back onto the library to come out; tap equivalents (Add, tap to move, Take out) cover phones. The photo grid's selection bar also has Add to playlist, which can start a new one.
+
 ## 6. Image pipeline
 
 On upload (admin only, multipart, up to ~50 MB each, batch allowed):
@@ -227,7 +233,7 @@ Deleting a photo removes its `/v/` files along with its row.
 - `GET/POST/PATCH/DELETE /api/tags`
 - `POST /api/photos/tags` `{ photo_ids, add: [tag_id], remove: [tag_id] }` (bulk)
 - `GET/POST/PATCH/DELETE /api/presets`
-- `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/control` `{ action, photo_id? }` (next, previous, pause, resume, show), `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
+- `GET /api/devices`, `PATCH /api/devices/:id` (name, filter, sort, interval, matte, backdrop, sleep window — saving `filter` pushes `playlist-changed` over SSE; other fields push `config-changed`), `POST /api/devices/:id/control` `{ action, photo_id? }` (next, previous, pause, resume, show), `playlist_id` on the PATCH, `POST /api/devices/:id/revoke`, `POST /api/devices/:id/reload`
 - `GET /api/pair/lookup?code=` → screen size, IP, and age of a pending pairing, for the approval screen
 - `POST /api/pair/approve` `{ code, name }`
 - `POST /api/photos/arrange` (order by date), `GET /api/photos/export` (download every original)
@@ -260,7 +266,9 @@ Upload also works from the phone (share sheet → browser → upload form with t
 
 **Start slideshow** at the top of the admin plays in that browser with no pairing, using the same page as a frame. The admin session may read `GET /api/frame/config` and `GET /api/frame/playlist`, and nothing else under `/api/frame/`.
 
-The **Show photos tagged** dropdown drives both this slideshow and the photo grid. With no tag selected, every visible photo plays, tagged or not; with a tag selected, only photos with that tag play. The **Order** dropdown beside it picks **Random** (the default), a new shuffle on each start, or **Sequential**, the arranged order. Clicking a thumbnail opens the slideshow on that photo.
+**Start slideshow** plays on **all frames** (the default), **one frame**, or **this screen**, chosen by a **Play on** dropdown. For frames, `POST /api/slideshow/start { frame, show, order }` saves what to show and the order as each target frame's settings, then sends a `restart` control so it begins at the first photo now; other frames carry on. A remote (previous, pause, resume, next) beside it works the same targets. "On this day" can't be a frame's whole filter, so on a frame it shows everything with today's memories first. Each frame card also has a large **Deactivate** button, with a confirmation dialog, which revokes the device; it returns to its pairing screen and must be paired again.
+
+The **Show** dropdown (tags, "On this day", and playlists as `playlist:<id>`) drives both this slideshow and the photo grid. With no tag selected, every visible photo plays, tagged or not; with a tag selected, only photos with that tag play. The **Order** dropdown beside it picks **Random** (the default), a new shuffle on each start, or **Sequential**, the arranged order. Clicking a thumbnail opens the slideshow on that photo.
 
 The left and right arrow keys change photos, on frames too. Esc leaves the slideshow and returns to the admin; in full screen the browser keeps Esc for itself, so leaving full screen does the same.
 

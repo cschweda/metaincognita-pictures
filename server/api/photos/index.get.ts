@@ -1,6 +1,7 @@
 // Role: admin. In display order; pass `next` back as `before` for the following page.
 import { db } from '../../db'
 import type { Photo } from '../../types'
+import { MEMORIES_FILTER, MEMORIES_SQL, PLAYLIST_PREFIX } from '../../utils/filters'
 
 export default defineEventHandler((event) => {
   const query = getQuery(event)
@@ -9,9 +10,14 @@ export default defineEventHandler((event) => {
   if (Number.isNaN(before)) throw createError({ statusCode: 400, statusMessage: 'Invalid before' })
 
   const tag = typeof query.tag === 'string' ? query.tag : null
-  const clause = tag === 'memories'
-    ? { sql: `strftime('%m-%d', taken_at) = strftime('%m-%d', 'now')`, params: [] }
-    : filterClause({ tags: tag ? [tag] : [], mode: 'any' })
+  const clause = tag === MEMORIES_FILTER
+    ? { sql: MEMORIES_SQL, params: [] as string[] }
+    : tag?.startsWith(PLAYLIST_PREFIX)
+      ? {
+          sql: `EXISTS (SELECT 1 FROM playlist_photos pp WHERE pp.photo_id = photos.id AND pp.playlist_id = ?)`,
+          params: [tag.slice(PLAYLIST_PREFIX.length)],
+        }
+      : filterClause({ tags: tag ? [tag] : [], mode: 'any' })
   const search = typeof query.q === 'string' ? query.q.trim().slice(0, 100) : ''
   // LIKE wildcards in the search text are matched literally.
   const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`

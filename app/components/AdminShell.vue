@@ -6,6 +6,7 @@ const route = useRoute()
 const LINKS = [
   { label: 'Photos', to: '/admin' },
   { label: 'Frames', to: '/admin/frames' },
+  { label: 'Playlists', to: '/admin/playlists' },
   { label: 'Tags', to: '/admin/tags' },
   { label: 'Stats', to: '/admin/stats' },
   { label: 'Pair a frame', to: '/admin/pair' },
@@ -24,15 +25,58 @@ const ORDERS = [
   { label: 'Sequential, in my order', value: 'sequential' },
 ]
 const { tags, loadTags } = useTags()
+const target = useSlideshowTarget()
+const frames = ref<Frame[]>([])
+const playlists = ref<Playlist[]>([])
+const remoteError = ref('')
 
-const tagName = computed(() => tagFilter.value === 'memories'
-  ? 'On this day'
-  : tags.value.find(tag => tag.id === tagFilter.value)?.name)
+const PLAYLIST_PREFIX = 'playlist:'
+const tagName = computed(() => {
+  if (tagFilter.value === 'memories') return 'On this day'
+  if (tagFilter.value.startsWith(PLAYLIST_PREFIX)) {
+    const playlist = playlists.value.find(item => `${PLAYLIST_PREFIX}${item.id}` === tagFilter.value)
+    if (!playlist) return undefined
+    return /playlist$/i.test(playlist.name) ? playlist.name : `the ${playlist.name} playlist`
+  }
+  return tags.value.find(tag => tag.id === tagFilter.value)?.name
+})
 const tagItems = computed(() => [
   { label: 'No tag: all photos', value: 'all' },
   { label: 'On this day', value: 'memories' },
+  ...playlists.value.map(playlist => ({ label: `Playlist: ${playlist.name} (${playlist.photos})`, value: `${PLAYLIST_PREFIX}${playlist.id}` })),
   ...tags.value.map(tag => ({ label: `${tag.name} (${tag.photos ?? 0})`, value: tag.id })),
 ])
+const targetItems = computed(() => [
+  ...(frames.value.length ? [{ label: `All frames (${frames.value.length})`, value: 'all' }] : []),
+  ...frames.value.map(frame => ({ label: `${frame.name}${frame.online ? '' : ' (offline)'}`, value: frame.id })),
+  { label: 'This screen', value: 'screen' },
+])
+const targetFrames = computed(() => target.value === 'all'
+  ? frames.value
+  : frames.value.filter(frame => frame.id === target.value))
+const remoteFrames = computed(() => targetFrames.value.filter(frame => frame.online))
+
+async function loadTargets() {
+  const [deviceList, playlistList] = await Promise.all([
+    $fetch<{ devices: Frame[] }>('/api/devices'),
+    $fetch<{ playlists: Playlist[] }>('/api/playlists'),
+  ])
+  frames.value = deviceList.devices
+  playlists.value = playlistList.playlists
+  // With no frames, or a frame that has gone, play on this screen.
+  if (target.value === 'all' ? frames.value.length === 0 : target.value !== 'screen' && !frames.value.some(frame => frame.id === target.value)) {
+    target.value = frames.value.length ? 'all' : 'screen'
+  }
+}
+
+/** The remote, for the frame or frames Start slideshow is pointed at. */
+async function control(action: 'previous' | 'pause' | 'resume' | 'next') {
+  remoteError.value = ''
+  const results = await Promise.allSettled(remoteFrames.value.map(frame =>
+    $fetch(`/api/devices/${frame.id}/control`, { method: 'POST', headers: apiHeaders, body: { action } }),
+  ))
+  if (results.some(result => result.status === 'rejected')) remoteError.value = 'Some frames didn\'t respond. They may have just gone offline.'
+}
 
 async function loadHero() {
   const { photos } = await $fetch<{ photos: { id: string, hidden: number }[] }>('/api/photos', {
@@ -47,6 +91,7 @@ onMounted(() => {
   if (!props.hero) return
   loadTags()
   loadHero()
+  loadTargets()
 })
 watch([tagFilter, tags], () => {
   if (props.hero) loadHero()
@@ -90,9 +135,9 @@ async function logout() {
     </header>
 
     <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
-      <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" />
-      <div class="grid gap-3 sm:grid-cols-[minmax(0,36rem)_minmax(0,16rem)]">
-        <UFormField label="Show photos tagged">
+      <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" :frames="targetFrames" @started="loadTargets" />
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <UFormField label="Show">
           <USelect
             :model-value="tagFilter || 'all'"
             :items="tagItems"
@@ -109,6 +154,32 @@ async function logout() {
             class="w-full"
           />
         </UFormField>
+        <UFormField label="Play on" :help="target === 'screen' ? 'Full screen, in this browser' : 'Other frames carry on as they are'">
+          <USelect
+            v-model="target"
+            :items="targetItems"
+            size="lg"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+      <div v-if="target !== 'screen' && targetFrames.length" class="flex flex-wrap items-center gap-2">
+        <template v-if="remoteFrames.length">
+          <span class="text-muted">
+            Remote for {{ target === 'all' ? `all ${remoteFrames.length} online ${remoteFrames.length === 1 ? 'frame' : 'frames'}` : targetFrames[0]?.name }}
+          </span>
+          <div class="flex gap-2" role="group" aria-label="Remote control">
+            <UButton size="lg" variant="soft" color="neutral" icon="i-lucide-skip-back" aria-label="Previous photo" @click="control('previous')" />
+            <UButton size="lg" variant="soft" color="neutral" icon="i-lucide-pause" aria-label="Pause" @click="control('pause')" />
+            <UButton size="lg" variant="soft" color="neutral" icon="i-lucide-play" aria-label="Resume" @click="control('resume')" />
+            <UButton size="lg" variant="soft" color="neutral" icon="i-lucide-skip-forward" aria-label="Next photo" @click="control('next')" />
+          </div>
+        </template>
+        <span v-else class="text-muted">
+          {{ target === 'all' ? 'No frames are online right now.' : `${targetFrames[0]?.name} is offline right now.` }}
+          A slideshow started now plays when {{ target === 'all' ? 'they reconnect' : 'it reconnects' }}.
+        </span>
+        <p v-if="remoteError" role="alert" class="w-full text-error">{{ remoteError }}</p>
       </div>
     </section>
 

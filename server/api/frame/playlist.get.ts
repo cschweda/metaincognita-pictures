@@ -2,12 +2,13 @@
 import { createHash } from 'node:crypto'
 import { db } from '../../db'
 import type { Device, Photo, Preset } from '../../types'
-import { MEMORIES_FILTER, MEMORIES_SQL } from '../../utils/filters'
+import { MEMORIES_FILTER, MEMORIES_SQL, PLAYLIST_PREFIX } from '../../utils/filters'
 
 type Entry = Pick<Photo, 'id' | 'caption'> & { memory?: number | null }
 
 const ORDER: Record<string, string> = {
   manual: 'position DESC',
+  playlist: 'pp.position ASC',
   taken_at: 'COALESCE(taken_at, uploaded_at) DESC, id DESC',
   uploaded_at: 'id DESC',
   random: 'id',
@@ -45,14 +46,28 @@ export default defineEventHandler((event) => {
   const query = getQuery(event)
   const limit = Math.min(Math.max(Number(query.limit) || 200, 1), 200)
   // An admin's slideshow plays at random unless the admin picks the arranged order.
-  const tag = !device && typeof query.tag === 'string' && query.tag ? query.tag : null
+  const shown = !device && typeof query.tag === 'string' && query.tag ? query.tag : null
+  const tag = shown?.startsWith(PLAYLIST_PREFIX) ? null : shown
+  const previewPlaylist = shown?.startsWith(PLAYLIST_PREFIX)
+    ? shown.slice(PLAYLIST_PREFIX.length)
+    : typeof query.playlist === 'string' && query.playlist ? query.playlist : null
   const sort = !device ? (query.order === 'sequential' ? 'manual' : 'random') : device.sort in ORDER ? device.sort : 'random'
   // The frame counts each time it starts the playlist again, so a random order is new every lap.
   const lap = Math.max(Math.floor(Number(query.lap) || 0), 0)
 
-  const clause = tag === MEMORIES_FILTER
-    ? { sql: MEMORIES_SQL, params: [] }
-    : filterClause(device ? parseFilter(scheduledFilter(device, query.scheduled) ?? device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+  // A playlist replaces the tag filter, except while the frame's schedule shows its preset.
+  const scheduled = device ? scheduledFilter(device, query.scheduled) : undefined
+  const playlistId = device
+    ? (scheduled === undefined ? device.playlist_id : null)
+    : previewPlaylist
+
+  const clause = playlistId
+    ? { sql: '1', params: [] as string[] }
+    : tag === MEMORIES_FILTER
+      ? { sql: MEMORIES_SQL, params: [] }
+      : filterClause(device ? parseFilter(scheduled ?? device.filter) : { tags: tag ? [tag] : [], mode: 'any' })
+  const from = playlistId ? 'photos JOIN playlist_photos pp ON pp.photo_id = photos.id AND pp.playlist_id = ?' : 'photos'
+  const order = playlistId && sort === 'manual' ? ORDER.playlist : ORDER[sort]
 
   // A square photo suits any screen. Only clear mismatches are skipped.
   let shapeSql = ''
@@ -61,9 +76,9 @@ export default defineEventHandler((event) => {
   }
 
   const rows = db.prepare<string[], Entry>(
-    `SELECT id, caption, ${MEMORIES_SQL} AS memory FROM photos
-     WHERE hidden = 0 AND ${clause.sql} ${shapeSql} ORDER BY ${ORDER[sort]}`,
-  ).all(...clause.params)
+    `SELECT photos.id, photos.caption, ${MEMORIES_SQL} AS memory FROM ${from}
+     WHERE hidden = 0 AND ${clause.sql} ${shapeSql} ORDER BY ${order}`,
+  ).all(...(playlistId ? [playlistId] : []), ...clause.params)
   const entries: Entry[] = sort === 'random' ? shuffled(rows, `${device?.id ?? String(query.seed ?? 'admin')}:${lap}`) : rows
 
   // Photos from today's date in past years come first, in their usual order.

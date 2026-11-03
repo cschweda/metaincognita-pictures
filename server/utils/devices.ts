@@ -38,6 +38,7 @@ export function publicDevice(device: Device) {
     memories_first: device.memories_first === 1,
     show_captions: device.show_captions === 1,
     schedule_preset_id: device.schedule_preset_id,
+    playlist_id: device.playlist_id,
     schedule_days: JSON.parse(device.schedule_days) as number[],
     schedule_start: device.schedule_start,
     schedule_end: device.schedule_end,

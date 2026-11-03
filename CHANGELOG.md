@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Playlists: named, hand-picked sets of photos in their own order. Drag photos in from the library, drag to reorder, and drag one back out, with tap buttons on phones. Add selected photos from the grid, or start a new playlist from them. A frame shows either its tags or a playlist, in playlist order or shuffled, and playlists appear in the Show dropdown.
+- Start slideshow plays on all frames, one frame, or this screen, and leaves other frames as they are. A remote beside it works the chosen frames.
+- A large Deactivate button on each frame, with an "are you sure" dialog. A deactivated frame goes back to its pairing screen.
 - Technical details page in the admin, showing the version, commit, build time, Node, SQLite and schema migrations, library versions, and storage paths, with a summary to copy into bug reports. The Docker image records its commit for it.
 - GitHub link in the admin navigation.
 - Order for the admin slideshow, next to the tag dropdown: Random, the default, or Sequential, in your arranged order.

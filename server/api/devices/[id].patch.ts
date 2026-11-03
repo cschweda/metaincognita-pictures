@@ -55,6 +55,11 @@ export default defineEventHandler(async (event) => {
     if (preset !== null && (typeof preset !== 'string' || !db.prepare(`SELECT 1 FROM presets WHERE id = ?`).get(preset))) bad('Preset not found')
     changes.schedule_preset_id = preset as string | null
   }
+  if ('playlist_id' in body) {
+    const playlist = body.playlist_id
+    if (playlist !== null && (typeof playlist !== 'string' || !db.prepare(`SELECT 1 FROM playlists WHERE id = ?`).get(playlist))) bad('Playlist not found')
+    changes.playlist_id = playlist as string | null
+  }
   if ('schedule_days' in body) {
     const days = body.schedule_days
     if (!Array.isArray(days) || !days.every(day => Number.isInteger(day) && day >= 0 && day <= 6)) bad('Days must be 0 to 6')
@@ -70,7 +75,7 @@ export default defineEventHandler(async (event) => {
     .get(...Object.values(changes), id)
   if (!device) throw createError({ statusCode: 404, statusMessage: 'Frame not found' })
 
-  const PLAYLIST_COLUMNS = ['filter', 'sort', 'match_shape', 'memories_first']
+  const PLAYLIST_COLUMNS = ['filter', 'sort', 'match_shape', 'memories_first', 'playlist_id']
   if (columns.some(column => PLAYLIST_COLUMNS.includes(column))) pushToFrame(id, 'playlist-changed')
   if (columns.some(column => !PLAYLIST_COLUMNS.includes(column) && column !== 'name')) pushToFrame(id, 'config-changed')
   return { device: publicDevice(device) }

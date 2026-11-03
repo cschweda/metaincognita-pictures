@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ frame: Frame, tags: Tag[], presets: Preset[] }>()
+const props = defineProps<{ frame: Frame, tags: Tag[], presets: Preset[], playlists: Playlist[] }>()
 const emit = defineEmits<{ updated: [frame: Frame], removed: [id: string], presetsChanged: [] }>()
 
 const MATTES = [
@@ -16,12 +16,6 @@ const INTERVALS = [
   { label: '5 minutes', value: 300 },
   { label: '30 minutes', value: 1800 },
 ]
-const SORTS = [
-  { label: 'Random', value: 'random' },
-  { label: 'My order', value: 'manual' },
-  { label: 'Date taken', value: 'taken_at' },
-  { label: 'Date uploaded', value: 'uploaded_at' },
-]
 
 const DAYS = [
   { short: 'S', name: 'Sunday' },
@@ -34,9 +28,34 @@ const DAYS = [
 ]
 
 const expanded = ref(false)
+// Picking "Playlist" before any playlist exists shows how to make one, without changing the frame.
+const wantsPlaylist = ref(false)
+const showsPlaylist = computed(() => Boolean(props.frame.playlist_id) || wantsPlaylist.value)
+const playlistChoices = computed(() => props.playlists.map(playlist => ({
+  label: `${playlist.name} (${playlist.photos} ${playlist.photos === 1 ? 'photo' : 'photos'})`,
+  value: playlist.id,
+})))
+const SORTS = computed(() => [
+  { label: 'Random', value: 'random' },
+  { label: props.frame.playlist_id ? 'Playlist order' : 'My order', value: 'manual' },
+  { label: 'Date taken', value: 'taken_at' },
+  { label: 'Date uploaded', value: 'uploaded_at' },
+])
+
+function showTags() {
+  wantsPlaylist.value = false
+  if (props.frame.playlist_id) save({ playlist_id: null })
+}
+function showPlaylist() {
+  const first = props.playlists[0]
+  if (props.frame.playlist_id) return
+  if (first) save({ playlist_id: first.id })
+  else wantsPlaylist.value = true
+}
 const error = ref('')
 const presetName = ref('')
-const confirmingRevoke = ref(false)
+const confirmingDeactivate = ref(false)
+const deactivating = ref(false)
 const status = ref('')
 
 const lastSeen = computed(() => {
@@ -102,13 +121,21 @@ async function reload() {
   status.value = 'Reload sent.'
 }
 
-async function revoke() {
-  if (!confirmingRevoke.value) {
-    confirmingRevoke.value = true
-    return
+// The frame goes back to its pairing screen on its next request, so using it again means pairing it again.
+async function deactivate() {
+  deactivating.value = true
+  try {
+    await $fetch(`/api/devices/${props.frame.id}/revoke`, { method: 'POST', headers: apiHeaders })
+    confirmingDeactivate.value = false
+    emit('removed', props.frame.id)
   }
-  await $fetch(`/api/devices/${props.frame.id}/revoke`, { method: 'POST', headers: apiHeaders })
-  emit('removed', props.frame.id)
+  catch {
+    error.value = 'Couldn\'t deactivate the frame. Try again.'
+    confirmingDeactivate.value = false
+  }
+  finally {
+    deactivating.value = false
+  }
 }
 
 function rename(event: Event) {
@@ -142,7 +169,7 @@ function toggleDay(day: number) {
       <div class="min-w-0">
         <h2 class="text-3xl font-bold tracking-tight truncate">{{ frame.name }}</h2>
         <p class="text-muted">{{ lastSeen }}</p>
-        <p v-if="frame.dormant" class="text-warning">Silent for 30+ days. Consider removing it.</p>
+        <p v-if="frame.dormant" class="text-warning">Silent for 30+ days. Consider deactivating it.</p>
       </div>
     </div>
 
@@ -156,61 +183,96 @@ function toggleDay(day: number) {
     <div class="flex flex-col gap-2">
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-xl font-bold">Showing</h3>
-        <UFieldGroup v-if="frame.filter.tags.length > 1" size="xs">
-          <UButton
-            :variant="frame.filter.mode === 'any' ? 'solid' : 'soft'"
-            color="neutral"
-            :aria-pressed="frame.filter.mode === 'any'"
-            @click="save({ filter: { ...frame.filter, mode: 'any' } })"
-          >
-            Any tag
+        <UFieldGroup size="sm" aria-label="What this frame shows">
+          <UButton :variant="showsPlaylist ? 'soft' : 'solid'" color="neutral" :aria-pressed="!showsPlaylist" @click="showTags">
+            By tag
           </UButton>
-          <UButton
-            :variant="frame.filter.mode === 'all' ? 'solid' : 'soft'"
-            color="neutral"
-            :aria-pressed="frame.filter.mode === 'all'"
-            @click="save({ filter: { ...frame.filter, mode: 'all' } })"
-          >
-            All tags
+          <UButton :variant="showsPlaylist ? 'solid' : 'soft'" color="neutral" :aria-pressed="showsPlaylist" @click="showPlaylist">
+            Playlist
           </UButton>
         </UFieldGroup>
       </div>
 
-      <div v-if="presets.length" class="flex flex-wrap gap-2">
-        <UButton
-          v-for="preset in presets"
-          :key="preset.id"
-          size="sm"
-          :variant="activePreset === preset.id ? 'solid' : 'outline'"
-          :aria-pressed="activePreset === preset.id"
-          @click="save({ filter: preset.filter })"
-        >
-          {{ preset.name }}
-        </UButton>
-      </div>
+      <template v-if="showsPlaylist">
+        <USelect
+          v-if="playlists.length"
+          :model-value="frame.playlist_id ?? undefined"
+          :items="playlistChoices"
+          placeholder="Choose a playlist"
+          size="lg"
+          class="w-full"
+          aria-label="Playlist"
+          @update:model-value="save({ playlist_id: String($event) })"
+        />
+        <p v-else class="text-muted">
+          No playlists yet. Select photos on the
+          <NuxtLink to="/admin" class="text-primary underline underline-offset-2">Photos</NuxtLink>
+          page and choose Add to playlist, or start one on
+          <NuxtLink to="/admin/playlists" class="text-primary underline underline-offset-2">Playlists</NuxtLink>.
+        </p>
+        <p v-if="frame.playlist_id && frame.schedule_preset_id" class="text-sm text-muted">
+          At its scheduled times, this frame shows its scheduled preset instead.
+        </p>
+      </template>
 
-      <div class="flex flex-wrap gap-2">
-        <UButton
-          size="sm"
-          color="neutral"
-          :variant="frame.filter.tags.length === 0 ? 'solid' : 'soft'"
-          :aria-pressed="frame.filter.tags.length === 0"
-          @click="save({ filter: { tags: [], mode: frame.filter.mode } })"
-        >
-          Everything
-        </UButton>
-        <UButton
-          v-for="tag in tags"
-          :key="tag.id"
-          size="sm"
-          color="neutral"
-          :variant="frame.filter.tags.includes(tag.id) ? 'solid' : 'soft'"
-          :aria-pressed="frame.filter.tags.includes(tag.id)"
-          @click="toggleTag(tag.id)"
-        >
-          {{ tag.name }}
-        </UButton>
-      </div>
+      <template v-else>
+        <div v-if="frame.filter.tags.length > 1" class="flex justify-end">
+          <UFieldGroup size="xs">
+            <UButton
+              :variant="frame.filter.mode === 'any' ? 'solid' : 'soft'"
+              color="neutral"
+              :aria-pressed="frame.filter.mode === 'any'"
+              @click="save({ filter: { ...frame.filter, mode: 'any' } })"
+            >
+              Any tag
+            </UButton>
+            <UButton
+              :variant="frame.filter.mode === 'all' ? 'solid' : 'soft'"
+              color="neutral"
+              :aria-pressed="frame.filter.mode === 'all'"
+              @click="save({ filter: { ...frame.filter, mode: 'all' } })"
+            >
+              All tags
+            </UButton>
+          </UFieldGroup>
+        </div>
+
+        <div v-if="presets.length" class="flex flex-wrap gap-2">
+          <UButton
+            v-for="preset in presets"
+            :key="preset.id"
+            size="sm"
+            :variant="activePreset === preset.id ? 'solid' : 'outline'"
+            :aria-pressed="activePreset === preset.id"
+            @click="save({ filter: preset.filter })"
+          >
+            {{ preset.name }}
+          </UButton>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            size="sm"
+            color="neutral"
+            :variant="frame.filter.tags.length === 0 ? 'solid' : 'soft'"
+            :aria-pressed="frame.filter.tags.length === 0"
+            @click="save({ filter: { tags: [], mode: frame.filter.mode } })"
+          >
+            Everything
+          </UButton>
+          <UButton
+            v-for="tag in tags"
+            :key="tag.id"
+            size="sm"
+            color="neutral"
+            :variant="frame.filter.tags.includes(tag.id) ? 'solid' : 'soft'"
+            :aria-pressed="frame.filter.tags.includes(tag.id)"
+            @click="toggleTag(tag.id)"
+          >
+            {{ tag.name }}
+          </UButton>
+        </div>
+      </template>
     </div>
 
     <div class="flex flex-col gap-2">
@@ -382,13 +444,44 @@ function toggleDay(day: number) {
 
       <div class="flex flex-wrap gap-2">
         <UButton size="sm" variant="soft" color="neutral" @click="reload">Reload frame</UButton>
-        <UButton size="sm" variant="soft" color="error" @click="revoke">
-          {{ confirmingRevoke ? 'Really remove this frame?' : 'Remove frame' }}
-        </UButton>
       </div>
       <p v-if="status" role="status" class="text-sm">{{ status }}</p>
     </div>
 
     <p v-if="error" role="alert" class="text-sm text-error">{{ error }}</p>
+
+    <UButton
+      size="xl"
+      color="error"
+      icon="i-lucide-power"
+      class="w-full justify-center sm:w-auto sm:self-start"
+      @click="confirmingDeactivate = true"
+    >
+      Deactivate {{ frame.name }}
+    </UButton>
+
+    <UModal
+      v-model:open="confirmingDeactivate"
+      :title="`Deactivate ${frame.name}?`"
+      :dismissible="!deactivating"
+    >
+      <template #body>
+        <div class="flex flex-col gap-3 text-lg">
+          <p>Are you sure? It stops showing photos right away and goes back to its pairing screen.</p>
+          <p class="font-bold">Once deactivated, you'll need to pair it again to use it.</p>
+          <p class="text-base text-muted">Your photos, tags, and playlists aren't affected.</p>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <UButton size="lg" color="neutral" variant="soft" class="justify-center" autofocus :disabled="deactivating" @click="confirmingDeactivate = false">
+            Keep it
+          </UButton>
+          <UButton size="lg" color="error" icon="i-lucide-power" class="justify-center" :loading="deactivating" @click="deactivate">
+            Deactivate
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </li>
 </template>

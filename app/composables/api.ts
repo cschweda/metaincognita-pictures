@@ -42,6 +42,15 @@ export interface Frame {
   schedule_days: number[]
   schedule_start: string | null
   schedule_end: string | null
+  playlist_id: string | null
+}
+
+export interface Playlist {
+  id: string
+  name: string
+  photos: number
+  frames: string[]
+  cover: string | null
 }
 
 /** Finds or creates tags by name, and returns their ids. */
@@ -58,6 +67,11 @@ export function useTagFilter() {
 }
 
 export type SlideshowOrder = 'random' | 'sequential'
+
+/** Where Start slideshow plays: 'all' frames, one frame's id, or 'screen' for this browser. */
+export function useSlideshowTarget() {
+  return useState<string>('slideshow-target', () => 'all')
+}
 
 /** How the admin's slideshow plays. Either way it starts again after the last photo. */
 export function useSlideshowOrder() {

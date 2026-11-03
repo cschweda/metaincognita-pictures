@@ -1,8 +1,14 @@
 <script setup lang="ts">
-// The main action: a gold wall with the library's real photos in a dark matte.
-const props = defineProps<{ photos: string[], count: number | null, tagName?: string }>()
+// The main action: a gold wall with the library's real photos in a dark matte. It starts a
+// slideshow on all frames, one frame, or full screen in this browser.
+const props = defineProps<{ photos: string[], count: number | null, tagName?: string, frames: Frame[] }>()
+const emit = defineEmits<{ started: [] }>()
 const tagFilter = useTagFilter()
 const order = useSlideshowOrder()
+const target = useSlideshowTarget()
+const starting = ref(false)
+const result = ref('')
+const failed = ref(false)
 const shown = ref(0)
 let timer: ReturnType<typeof setInterval> | undefined
 
@@ -20,21 +26,54 @@ const detail = computed(() => {
   if (props.count === 0 && memories) return 'No photos from this date yet'
   if (props.count === 0) return props.tagName ? `No photos are tagged ${props.tagName}` : 'Add photos first'
   const photos = `${props.count} ${props.count === 1 ? 'photo' : 'photos'}`
-  const how = order.value === 'random' ? 'in random order' : 'in your order'
-  if (memories) return `${photos} from this date, ${how}`
-  return props.tagName ? `${photos} tagged ${props.tagName}, ${how}` : `All ${photos} ${how}`
+  const playlist = tagFilter.value.startsWith('playlist:')
+  const how = order.value === 'random' ? 'in random order' : playlist ? 'in playlist order' : 'in your order'
+  const where = target.value === 'screen'
+    ? ''
+    : target.value === 'all' ? ', on all frames' : `, on ${props.frames[0]?.name ?? 'a frame'}`
+  if (memories) return `${photos} from this date, ${how}${where}`
+  if (playlist) return `${photos} from ${props.tagName}, ${how}${where}`
+  return props.tagName ? `${photos} tagged ${props.tagName}, ${how}${where}` : `All ${photos} ${how}${where}`
 })
 
+const names = (list: string[]) => list.length <= 2 ? list.join(' and ') : `${list.slice(0, -1).join(', ')}, and ${list.at(-1)}`
+
+async function startOnFrames() {
+  starting.value = true
+  result.value = ''
+  failed.value = false
+  try {
+    const { started, offline } = await $fetch<{ started: string[], offline: string[] }>('/api/slideshow/start', {
+      method: 'POST',
+      headers: apiHeaders,
+      body: { frame: target.value, show: tagFilter.value, order: order.value },
+    })
+    result.value = [
+      started.length ? `Started on ${names(started)}.` : '',
+      offline.length ? `${names(offline)} ${offline.length === 1 ? 'is' : 'are'} offline, and will switch on reconnecting.` : '',
+    ].filter(Boolean).join(' ')
+    emit('started')
+  }
+  catch (error) {
+    failed.value = true
+    result.value = (error as { statusMessage?: string }).statusMessage ?? 'Couldn\'t start the slideshow.'
+  }
+  finally {
+    starting.value = false
+  }
+}
+
 async function start() {
+  if (target.value !== 'screen') return startOnFrames()
   await document.documentElement.requestFullscreen?.().catch(() => undefined)
   await navigateTo({ path: '/', query: { tag: tagFilter.value || undefined, order: order.value } })
 }
 </script>
 
 <template>
-  <button type="button" class="start" :disabled="count === 0" @click="start">
+  <button type="button" class="start" :disabled="count === 0 || starting" @click="start">
     <span class="words">
-      <span class="title">Start slideshow</span>
+      <span class="title">{{ starting ? 'Starting…' : 'Start slideshow' }}</span>
       <span class="detail">{{ detail }}</span>
     </span>
     <span class="print" aria-hidden="true">
@@ -47,6 +86,7 @@ async function start() {
       >
     </span>
   </button>
+  <p class="text-lg" :class="failed ? 'text-error' : 'text-default'" :role="failed ? 'alert' : 'status'">{{ result }}</p>
 </template>
 
 <style scoped>

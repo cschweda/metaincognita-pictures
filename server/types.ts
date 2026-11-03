@@ -52,6 +52,7 @@ export interface Device {
   schedule_days: string
   schedule_start: string | null
   schedule_end: string | null
+  playlist_id: string | null
 }
 
 export interface Pairing {
