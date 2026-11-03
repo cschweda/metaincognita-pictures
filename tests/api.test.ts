@@ -8,6 +8,7 @@ import { after, before, test } from 'node:test'
 import argon2 from 'argon2'
 import sharp from 'sharp'
 import { inSchedule } from '../app/utils/schedule'
+import { base32Encode, currentStep, matchTotp, totpCode } from '../server/utils/totp'
 
 const PORT = 3197
 const BASE = `http://127.0.0.1:${PORT}`
@@ -1049,6 +1050,85 @@ test('break glass signs out every login and every frame', async () => {
   const events = (await (await adminFetch('/api/events?kind=session')).json()).events
   assert.ok(events.some((e: { message: string }) => e.message.startsWith('Signed out everything')))
   assert.equal((await (await adminFetch('/api/events/summary')).json()).warnings_24h > 0, true)
+})
+
+test('two-factor codes match the RFC 6238 test values, and each one works once', () => {
+  const secret = base32Encode(Buffer.from('12345678901234567890'))
+  assert.equal(secret, 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ')
+  assert.equal(totpCode(secret, Math.floor(59 / 30)), '287082')
+  assert.equal(totpCode(secret, Math.floor(1111111109 / 30)), '081804')
+  assert.equal(totpCode(secret, Math.floor(2000000000 / 30)), '279037')
+  const now = 1111111109_000
+  assert.equal(matchTotp(secret, '081804', 0, now), Math.floor(1111111109 / 30))
+  assert.equal(matchTotp(secret, '081 804', 0, now), Math.floor(1111111109 / 30), 'spaces are ignored')
+  assert.equal(matchTotp(secret, '081804', Math.floor(1111111109 / 30), now), null, 'a used code is refused')
+  assert.equal(matchTotp(secret, '000000', 0, now), null)
+  assert.equal(matchTotp(secret, '12345', 0, now), null)
+})
+
+test('two-factor login is off by default, and once on needs the code after the password', async () => {
+  const known = admin.split('; ').find(part => part.startsWith('known_browser='))!
+  const login = (password: string) => fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '10.77.0.1', cookie: known }, body: JSON.stringify({ password }) })
+  const code = (ticket: string, value: string) => fetch(`${BASE}/api/auth/code`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '10.77.0.1', cookie: `${known}; ${ticket}` }, body: JSON.stringify({ code: value }) })
+  const ticketFrom = (response: Response) => response.headers.getSetCookie().map(value => value.split(';')[0]!).find(part => part.startsWith('login_ticket='))!
+
+  assert.deepEqual(await (await adminFetch('/api/security')).json(), { two_factor: false, recovery_codes_left: 0 })
+  assert.equal((await adminJson('/api/security/two-factor/setup', 'POST', { password: 'wrong' })).status, 401, 'setting up needs the password')
+  const setup = await (await adminJson('/api/security/two-factor/setup', 'POST', { password: PASSWORD })).json()
+  assert.match(setup.qr, /^<svg/)
+  const secret = setup.secret.replace(/\s/g, '')
+  assert.equal((await adminJson('/api/security/two-factor/enable', 'POST', { code: '000000' === totpCode(secret, currentStep()) ? '111111' : '000000' })).status, 400)
+  assert.equal((await adminFetch('/api/security').then(r => r.json())).two_factor, false, 'a wrong code changes nothing')
+
+  const step = currentStep()
+  const enabled = await adminJson('/api/security/two-factor/enable', 'POST', { code: totpCode(secret, step) })
+  assert.equal(enabled.status, 200)
+  const { recovery_codes: recovery } = await enabled.json()
+  assert.equal(recovery.length, 10)
+  assert.match(recovery[0], /^[A-Z2-9]{5}-[A-Z2-9]{5}$/)
+  assert.deepEqual(await (await adminFetch('/api/security')).json(), { two_factor: true, recovery_codes_left: 10 })
+
+  // The password alone is no longer a session.
+  const first = await login(PASSWORD)
+  assert.deepEqual(await first.json(), { code_needed: true })
+  assert.ok(!first.headers.getSetCookie().some(value => value.startsWith('admin_session=')), 'no session yet')
+  const ticket = ticketFrom(first)
+  assert.ok(ticket)
+  assert.equal((await code('login_ticket=forged', totpCode(secret, step + 1))).status, 401, 'a code needs a real ticket')
+  assert.equal((await code(ticket, totpCode(secret, step))).status, 401, 'the code used to turn it on can\'t be used again')
+  const done = await code(ticket, totpCode(secret, step + 1))
+  assert.equal(done.status, 200)
+  const session = cookieFrom(done)
+  assert.deepEqual(await (await fetch(`${BASE}/api/auth/session`, { headers: { cookie: session } })).json(), { admin: true, device: false })
+  assert.equal((await code(ticket, totpCode(secret, step + 1))).status, 401, 'a ticket is used up by its login')
+
+  // A recovery code works once, in either case and with or without the dash.
+  const again = ticketFrom(await login(PASSWORD))
+  assert.equal((await code(again, recovery[0].toLowerCase().replace('-', ''))).status, 200)
+  const third = ticketFrom(await login(PASSWORD))
+  assert.equal((await code(third, recovery[0])).status, 401, 'a recovery code works only once')
+  assert.equal((await adminFetch('/api/security').then(r => r.json())).recovery_codes_left, 9)
+
+  // Turning it off needs the password and a code.
+  assert.equal((await adminJson('/api/security/two-factor/disable', 'POST', { password: PASSWORD, code: '' })).status, 401)
+  assert.equal((await adminFetch('/api/security').then(r => r.json())).two_factor, true)
+  assert.equal((await adminJson('/api/security/two-factor/disable', 'POST', { password: PASSWORD, code: recovery[1] })).status, 200)
+  assert.deepEqual(await (await login(PASSWORD)).json(), { ok: true }, 'the password alone logs in again')
+
+  const messages = (await (await adminFetch('/api/events?kind=security')).json()).events.map((e: { message: string }) => e.message)
+  assert.ok(messages.includes('Turned on two-factor login'))
+  assert.ok(messages.includes('Turned off two-factor login'))
+  assert.ok(messages.some((m: string) => m.startsWith('Logged in with a recovery code')))
+})
+
+test('the same warning from one address is recorded once a minute, so a flood can\'t crowd out the log', async () => {
+  for (let i = 0; i < 9; i++) {
+    await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '10.88.0.1' }, body: JSON.stringify({ password: 'wrong' }) })
+  }
+  const events = (await (await adminFetch('/api/events?level=warn')).json()).events.filter((e: { ip: string }) => e.ip === '10.88.0.1')
+  const refused = events.filter((e: { message: string }) => e.message.startsWith('Refused while locked out'))
+  assert.ok(events.some((e: { message: string }) => e.message.startsWith('Locked out')), 'each different warning is kept')
+  assert.equal(refused.length, 1, 'repeats of one warning are recorded once')
 })
 
 // This leaves the server in a flood of wrong guesses, so it runs last.

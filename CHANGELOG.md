@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Optional two-factor login, off by default. Turn it on from Security, under More, with your password, a QR code for Google Authenticator or any authenticator app, and one code to confirm. Ten one-time recovery codes are shown once. Logging in then asks for the 6-digit code after the password, and wrong codes count toward the same lockout. Turning it off needs the password and a code. `pnpm security:reset-2fa` turns it off from the server if the phone and codes are both lost.
 - Activity log: logins, wrong passwords and lockouts, sessions, pairing, frames, uploads, and deletes, with time, IP, and browser, kept 90 days. An Activity button in the admin bar on every page opens it, with a count of the last day's warnings.
 - Break glass: Sign out everything, on the Sessions page, ends every login and deactivates every frame at once, after a typed confirmation and the password.
 - Forget all browsers, on the Sessions page, for a lost device. Changing the password forgets them too.
@@ -90,6 +91,9 @@ All notable changes to this project are documented here. The format is based on 
 - README, MIT license, `.nvmrc`, and this changelog.
 
 ### Changed
+
+- Tags moved into the More menu, with the new Security page, to keep the admin bar short.
+- The Activity log caps warnings and other events separately and records a repeated warning from one address once a minute, so a flood of wrong passwords can't push real events out.
 
 - README describes live frame state, new photos playing next, and the login protection.
 - The Frames page thumbnail follows the frame's photo within seconds: frames report every photo change, pause, and resume, and the page refreshes every 5 seconds while it's open.

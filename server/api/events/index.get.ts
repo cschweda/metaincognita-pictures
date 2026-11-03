@@ -2,7 +2,7 @@
 // `kind` picks one kind; `before` is the id to page back from.
 import { db } from '../../db'
 
-const KINDS = new Set(['login', 'session', 'pair', 'frame', 'delete', 'photo', 'demo'])
+const KINDS = new Set(['login', 'session', 'pair', 'frame', 'delete', 'photo', 'demo', 'security'])
 
 export default defineEventHandler((event) => {
   const query = getQuery(event)

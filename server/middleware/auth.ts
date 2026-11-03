@@ -6,6 +6,7 @@ import type { Device } from '../types'
 
 const PUBLIC_ROUTES = new Set([
   'POST /api/auth/login',
+  'POST /api/auth/code',
   'POST /api/auth/logout',
   'GET /api/auth/session',
   'GET /api/auth/image',
@@ -21,7 +22,7 @@ const ADMIN_SLIDESHOW_ROUTES = new Set(['GET /api/frame/config', 'GET /api/frame
 const ADMIN_SLIDESHOW_PREFIX = 'GET /api/frame/photo/'
 
 // Public routes that use a browser session, so they need the CSRF header too.
-const CSRF_PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'POST /api/auth/logout'])
+const CSRF_PUBLIC_ROUTES = new Set(['POST /api/auth/login', 'POST /api/auth/code', 'POST /api/auth/logout'])
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 function readDevice(event: H3Event): Device | undefined {

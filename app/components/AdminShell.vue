@@ -8,9 +8,8 @@ const LINKS = [
   { label: 'Photos', to: '/admin' },
   { label: 'Frames', to: '/admin/frames' },
   { label: 'Playlists', to: '/admin/playlists' },
-  { label: 'Tags', to: '/admin/tags' },
 ]
-const MORE = ['/admin/activity', '/admin/stats', '/admin/sessions', '/admin/technical', '/admin/start-over']
+const MORE = ['/admin/tags', '/admin/stats', '/admin/sessions', '/admin/security', '/admin/technical', '/admin/start-over']
 const { repository } = useAppConfig()
 
 // The Activity log is one tap away from every page, with a count when there have been warnings.
@@ -34,8 +33,12 @@ onBeforeUnmount(() => clearInterval(warningTimer))
 
 const moreItems = computed(() => [
   [
+    { label: 'Tags', icon: 'i-lucide-tags', to: '/admin/tags' },
     { label: 'Stats', icon: 'i-lucide-chart-column', to: '/admin/stats' },
+  ],
+  [
     { label: 'Login sessions', icon: 'i-lucide-key-round', to: '/admin/sessions' },
+    { label: 'Security', icon: 'i-lucide-shield-check', to: '/admin/security' },
     { label: 'Technical details', icon: 'i-lucide-info', to: '/admin/technical' },
   ],
   [{ label: 'GitHub', icon: 'i-lucide-external-link', to: repository, target: '_blank' }],

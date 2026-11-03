@@ -67,6 +67,17 @@ To restore:
 
 Run the password command from the README, put the new line in `.env`, and run `docker compose up -d`. Existing logins stay active until you sign them out on the **Sessions** page. Frames aren't affected.
 
+## Two-factor login
+
+Off by default. Turn it on or off at any time from **Security**, under More in the admin. If you lose both your phone and your recovery codes, turn it off from the server, then log in with the password alone:
+
+```sh
+docker compose exec app pnpm security:reset-2fa   # Docker
+pnpm security:reset-2fa                          # without Docker, in the app folder
+```
+
+Restart the app afterwards. Your database backups hold the two-factor secret, so keep them as private as the server.
+
 ## Troubleshooting
 
 | Problem | What to check |

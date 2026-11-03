@@ -18,6 +18,7 @@ const FILTERS = [
   { label: 'Warnings', value: 'warn' },
   { label: 'Logins', value: 'login' },
   { label: 'Sessions', value: 'session' },
+  { label: 'Security', value: 'security' },
   { label: 'Frames and pairing', value: 'frames' },
   { label: 'Deletes', value: 'delete' },
   { label: 'Uploads', value: 'photo' },
@@ -30,6 +31,7 @@ const ICONS: Record<string, string> = {
   delete: 'i-lucide-trash-2',
   photo: 'i-lucide-image-up',
   demo: 'i-lucide-flask-conical',
+  security: 'i-lucide-shield-check',
 }
 
 const filter = ref('all')
@@ -44,7 +46,7 @@ function query(before?: number) {
   return {
     before,
     level: f === 'warn' ? 'warn' : undefined,
-    kind: f === 'frames' ? undefined : ['login', 'session', 'delete', 'photo'].includes(f) ? f : undefined,
+    kind: f === 'frames' ? undefined : ['login', 'session', 'security', 'delete', 'photo'].includes(f) ? f : undefined,
   }
 }
 

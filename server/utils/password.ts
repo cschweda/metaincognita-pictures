@@ -43,6 +43,22 @@ export function forgetAllBrowsers(): number {
  * tries are left; a right one resets the count.
  */
 export async function verifyAdminPassword(event: H3Event, password: unknown, purpose = 'login'): Promise<void> {
+  const { adminPasswordHash } = useRuntimeConfig(event)
+  if (!adminPasswordHash) {
+    console.error('[auth] NUXT_ADMIN_PASSWORD_HASH is not set')
+    throw createError({ statusCode: 500, statusMessage: 'Login is not configured' })
+  }
+  // Bounded so an oversized password can't be used to waste hashing time.
+  const text = typeof password === 'string' ? password : ''
+  await checkWithLockout(event, purpose, 'password', async () =>
+    text.length > 0 && text.length <= 1024 && await argon2.verify(adminPasswordHash, text))
+}
+
+/**
+ * Runs one guess, a password or a two-factor code, under the login lockout. Every guess counts
+ * toward the same five tries, so knowing the password doesn't buy extra guesses at the code.
+ */
+export async function checkWithLockout(event: H3Event, purpose: string, what: 'password' | 'code', check: () => boolean | Promise<boolean>): Promise<void> {
   const ip = clientIp(event)
   const key = ipBucket(ip)
   const prefix = prefixBucket(ip)
@@ -59,20 +75,11 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
     throw createError({ statusCode: 429, statusMessage: lockoutMessage(locked) })
   }
 
-  const { adminPasswordHash } = useRuntimeConfig(event)
-  if (!adminPasswordHash) {
-    console.error('[auth] NUXT_ADMIN_PASSWORD_HASH is not set')
-    throw createError({ statusCode: 500, statusMessage: 'Login is not configured' })
-  }
-
   // Counted before checking, and refunded if right.
   const attempt = reserveLoginAttempt(key, { trusted, prefix })
   const tokenAttempt = known ? reserveLoginAttempt(known, { trusted: true }) : null
 
-  // Bounded so an oversized password can't be used to waste hashing time.
-  const text = typeof password === 'string' ? password : ''
-  const valid = text.length > 0 && text.length <= 1024 && await argon2.verify(adminPasswordHash, text)
-  if (valid) {
+  if (await check()) {
     clearLoginAttempts(key, attempt.at, prefix)
     if (known) clearLoginAttempts(known, tokenAttempt?.at)
     return
@@ -83,13 +90,14 @@ export async function verifyAdminPassword(event: H3Event, password: unknown, pur
     attempt.triesLeft = 0
   }
   if (attempt.lockedMs > 0) {
-    logEvent(event, 'warn', 'login', `Locked out for 5 minutes after wrong passwords (${purpose})`)
+    logEvent(event, 'warn', 'login', `Locked out for 5 minutes after wrong ${what}s (${purpose})`)
     setResponseHeader(event, 'Retry-After', Math.ceil(attempt.lockedMs / 1000))
     throw createError({ statusCode: 429, statusMessage: lockoutMessage(attempt.lockedMs) })
   }
-  logEvent(event, 'warn', 'login', `Wrong password (${purpose}), ${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'} left`)
+  const tries = `${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'}`
+  logEvent(event, 'warn', 'login', `Wrong ${what} (${purpose}), ${tries} left`)
   throw createError({
     statusCode: 401,
-    statusMessage: `Wrong password. ${attempt.triesLeft} ${attempt.triesLeft === 1 ? 'try' : 'tries'} left before a ${LOCKOUT_MS / 60_000}-minute lockout.`,
+    statusMessage: `Wrong ${what}. ${tries} left before a ${LOCKOUT_MS / 60_000}-minute lockout.`,
   })
 }
