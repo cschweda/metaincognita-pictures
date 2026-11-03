@@ -6,7 +6,7 @@ import sharp from 'sharp'
 
 export const VARIANT_SIZES = [640, 1280, 1920, 2560] as const
 
-// Decoding a 24-megapixel HEIC peaks above 500 MB, so it runs in its own process.
+// Decoding a 48-megapixel HEIC peaks around 600 MB, so it runs in its own process.
 // That memory is gone when the process exits, and it can't trigger pm2's restart limit.
 const DECODE_HEIC = `
   const decode = require('heic-decode')

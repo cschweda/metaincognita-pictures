@@ -65,6 +65,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Tested 48-megapixel HEIC uploads: about 27 seconds on a 1 GB server, with no app restart.
+- Prebuilt image builds now cancel when a newer commit arrives, so older code can't overwrite `latest`.
 - Passwords need at least 12 characters.
 - The Docker backup service takes its first snapshot at start.
 - Frame setup no longer suggests automatic login, because FileVault prevents it.

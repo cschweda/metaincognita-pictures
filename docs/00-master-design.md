@@ -318,12 +318,12 @@ Full threat model, controls, and the Phase 2 ship checklist are in Doc 06.
 
 | Phase | Goal | Work | State |
 |---|---|---|---|
-| 6 | The kitchen Mac mini runs for a week | `scripts/setup-frame-mac.sh`, real iPhone photos, touch dragging | Script written; not yet run on the Mac mini |
+| 6 | The kitchen Mac mini runs for a week | `scripts/setup-frame-mac.sh`, real iPhone photos, touch dragging | Script written and touch dragging fixed; waiting on a run on the Mac mini and a test on a real iPhone |
 | 7 | Recover from losing the server | DO server backups, restore rehearsal, `pnpm photos:rebuild`, password rotation | Done, except daily backups at go-live and password rotation |
 | 8 | Changes can't quietly break things | `pnpm test`, `pnpm typecheck`, GitHub Actions | Done |
-| 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | First two done |
-| 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Not started |
-| 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because server backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | Not started |
+| 9 | Easy with thousands of photos | Tag rename and delete, search, then date and caption tools, batch upload progress | Done |
+| 10 | Nicer on the wall | Skip portrait photos on landscape screens, captions on or off per frame, scheduled filters, monitor off during sleep | Portrait skipping and monitor off done; the other two not started |
+| 11 | Ready for a big library | DO Volume at 80% disk, with its own backups because server backups exclude Volumes, nginx serving images, 48-megapixel HEIC testing, background upload queue | HEIC testing done: 27 seconds per photo on the 1 GB droplet. The rest isn't needed yet |
 | 12 | Family can add photos (optional) | Multiple users and passkeys. Changes the one-user security design | Not started; owner decides |
 
 ## 12. Open questions
