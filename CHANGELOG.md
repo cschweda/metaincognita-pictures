@@ -77,6 +77,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- The openmantel.com project site lists playlists, starting a slideshow on one frame, endless play, uploads from a phone, and photo details.
 - Security fixes from red/blue team audit 1 (see README):
   - Request bodies are limited before any route reads them.
   - The client IP header is believed only from a local or private proxy.
