@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Start over, under More: deletes every photo, frame, playlist, tag, and preset after two confirmations, a 10-second wait, a sentence typed by hand with pasting blocked, and the admin password. The server checks the same things, with a one-time token that must be at least 10 seconds old.
+- Deleting two or more photos needs the count typed by hand (for example `delete 12 photos`), the admin password, and a 5-second wait. One photo keeps its single confirmation, and single deletes are limited to 30 a minute so they can't be used to get around this.
 - README screenshots of Photos, photo details, Frames, a playlist, pairing, a frame on the wall, and the phone view, plus a See it section on openmantel.com.
 - README section on why OpenMantel is self-hosted rather than offered as a free hosted service.
 - Help on the Pair a frame page explaining where the code comes from, with this site's address.

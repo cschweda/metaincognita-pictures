@@ -292,7 +292,13 @@ function bulkShown(shown: boolean) {
 }
 
 const confirmingBulkDelete = ref(false)
+/** One photo keeps its single confirmation. Two or more go through the typed bulk delete. */
+const bulkDeleting = ref(false)
 function bulkDelete() {
+  if (selected.value.length > 1) {
+    bulkDeleting.value = true
+    return
+  }
   if (!confirmingBulkDelete.value) {
     confirmingBulkDelete.value = true
     return
@@ -302,6 +308,10 @@ function bulkDelete() {
     await Promise.all(selected.value.map(id => $fetch(`/api/photos/${id}`, { method: 'DELETE', headers })))
     selected.value = []
   })
+}
+async function afterBulkDelete() {
+  selected.value = []
+  await Promise.all([loadPhotos(), loadTags()])
 }
 
 async function movePhoto(from: number, to: number) {
@@ -494,7 +504,7 @@ async function remove(photo: Photo) {
         <UButton size="sm" variant="soft" color="neutral" :disabled="busy" @click="bulkShown(true)">Show on frames</UButton>
         <UButton size="sm" variant="soft" color="neutral" :disabled="busy" @click="bulkShown(false)">Hide from frames</UButton>
         <UButton size="sm" variant="soft" color="error" :disabled="busy" @click="bulkDelete">
-          {{ confirmingBulkDelete ? `Really delete ${selected.length}?` : 'Delete' }}
+          {{ selected.length > 1 ? `Delete ${selected.length}…` : confirmingBulkDelete ? 'Really delete?' : 'Delete' }}
         </UButton>
       </div>
     </section>
@@ -591,6 +601,7 @@ async function remove(photo: Photo) {
     <UButton v-if="next" block variant="soft" :loading="loading" @click="next !== null && loadPhotos(next)">
       Load more
     </UButton>
+    <BulkDeleteDialog v-model:open="bulkDeleting" :ids="selected" @deleted="afterBulkDelete" />
     <PhotoDetails
       v-model:open="detailsOpen"
       :photo="detailsPhoto"

@@ -21,6 +21,7 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 - **Handles iPhone photos.** Upload straight from your phone: open the admin in Safari, tap the upload area, and choose **Photo Library**. HEIC files work, photos are rotated correctly, and location data is stripped from everything a frame receives.
 - **Plays anywhere you're logged in.** Any browser where you're logged in can run a full-screen slideshow, with no pairing.
 - **Shows what's in each photo.** The ⋮ button on any photo shows its original format, file size, compression, colour profile, camera and lens settings, location if the camera recorded one, and the frame images made from it.
+- **Hard to delete by accident.** One photo takes one confirmation. Deleting several needs the count typed by hand and your password. **Start over**, which deletes everything, takes four confirmations, a 10-second wait, a sentence you have to type yourself, and your password.
 - **Stays yours.** Download every original, with its tags and captions, at any time. The Stats page shows server health and roughly how many more photos will fit, and the Technical details page shows the exact version running.
 
 ## Screenshots

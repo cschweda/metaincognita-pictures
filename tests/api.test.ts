@@ -716,3 +716,55 @@ test('audit follow-up: the nginx image check accepts exactly one image path', as
   assert.equal(await check(`/x/v/${shown.id}-640.webp`), 403)
   assert.equal(await check(''), 403)
 })
+
+test('deleting two or more photos needs the typed phrase and the password', async () => {
+  const photos = await Promise.all(['#811111', '#118111', '#111181'].map((color, i) => upload(color, `bulk-${i}.jpg`)))
+  const ids = photos.map(result => result.photo.id)
+  const bulkDelete = (body: unknown) => adminJson('/api/photos/delete', 'POST', body)
+
+  assert.equal((await bulkDelete({ photo_ids: ids.slice(0, 1), phrase: 'delete 1 photos', password: PASSWORD })).status, 400, 'one photo uses the single delete')
+  assert.equal((await bulkDelete({ photo_ids: ids.slice(0, 2), phrase: 'delete 3 photos', password: PASSWORD })).status, 400, 'the count must match')
+  assert.equal((await bulkDelete({ photo_ids: ids.slice(0, 2), phrase: 'delete 2 photos', password: 'wrong-password' })).status, 401)
+  const done = await bulkDelete({ photo_ids: ids.slice(0, 2), phrase: 'delete 2 photos', password: PASSWORD })
+  assert.equal(done.status, 200)
+  assert.equal((await done.json()).deleted, 2)
+  const left = (await (await adminFetch('/api/photos?limit=200')).json()).photos.map((p: { id: string }) => p.id)
+  assert.ok(!left.includes(ids[0]) && !left.includes(ids[1]) && left.includes(ids[2]))
+})
+
+test('the single delete can\'t be looped to get around the bulk checks', async () => {
+  const statuses = []
+  for (let i = 0; i < 31; i++) statuses.push((await adminFetch(`/api/photos/01ZZZZZZZZZZZZZZZZZZZZZZ${String(i).padStart(2, '0')}`, { method: 'DELETE', headers: CSRF })).status)
+  assert.ok(statuses.slice(0, 30).every(status => status === 404))
+  assert.equal(statuses[30], 429)
+})
+
+// This deletes everything in the test database, so it runs last.
+test('the nuclear option needs a token that has waited, the exact phrase, and the password', async () => {
+  const { cookie } = await pairDevice('Doomed')
+  const start = async () => (await (await adminJson('/api/nuke/start', 'POST', {})).json()) as { token: string, phrase: string, counts: { photos: number } }
+  const confirm = (body: unknown) => adminJson('/api/nuke/confirm', 'POST', body)
+
+  assert.equal((await fetch(`${BASE}/api/nuke/start`, { method: 'POST', headers: CSRF })).status, 401)
+  const first = await start()
+  assert.equal(first.phrase, 'I want to nuke everything and start from scratch')
+  assert.ok(first.counts.photos > 0)
+  assert.equal((await confirm({ token: first.token, phrase: first.phrase, password: PASSWORD })).status, 425, 'too soon after starting')
+  assert.equal((await confirm({ token: first.token, phrase: first.phrase.toLowerCase(), password: PASSWORD })).status, 400, 'the phrase must match exactly')
+  assert.equal((await confirm({ token: 'made-up', phrase: first.phrase, password: PASSWORD })).status, 403)
+
+  await new Promise(resolve => setTimeout(resolve, 10_500))
+  const done = await confirm({ token: first.token, phrase: first.phrase, password: PASSWORD })
+  assert.equal(done.status, 200)
+  assert.ok((await done.json()).deleted.photos > 0)
+  assert.equal((await confirm({ token: first.token, phrase: first.phrase, password: PASSWORD })).status, 403, 'a token works once')
+
+  assert.equal((await (await adminFetch('/api/photos')).json()).photos.length, 0)
+  assert.equal((await (await adminFetch('/api/devices')).json()).devices.length, 0)
+  assert.equal((await (await adminFetch('/api/playlists')).json()).playlists.length, 0)
+  assert.equal((await (await adminFetch('/api/tags')).json()).tags.length, 0)
+  assert.equal((await fetch(`${BASE}/api/frame/config`, { headers: { cookie } })).status, 401, 'frames go back to pairing')
+  const { readdirSync } = await import('node:fs')
+  assert.deepEqual([...readdirSync(join(directory, 'orig')), ...readdirSync(join(directory, 'v'))], [], 'photo files are gone from disk')
+  assert.equal((await adminFetch('/api/auth/session')).status, 200, 'the admin stays logged in')
+})

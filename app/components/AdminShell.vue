@@ -10,7 +10,7 @@ const LINKS = [
   { label: 'Playlists', to: '/admin/playlists' },
   { label: 'Tags', to: '/admin/tags' },
 ]
-const MORE = ['/admin/stats', '/admin/sessions', '/admin/technical']
+const MORE = ['/admin/stats', '/admin/sessions', '/admin/technical', '/admin/start-over']
 const { repository } = useAppConfig()
 const moreItems = computed(() => [
   [
@@ -19,6 +19,7 @@ const moreItems = computed(() => [
     { label: 'Technical details', icon: 'i-lucide-info', to: '/admin/technical' },
   ],
   [{ label: 'GitHub', icon: 'i-lucide-external-link', to: repository, target: '_blank' }],
+  [{ label: 'Start over', icon: 'i-lucide-triangle-alert', to: '/admin/start-over', color: 'error' as const }],
   [{ label: 'Log out', icon: 'i-lucide-log-out', onSelect: logout }],
 ])
 
