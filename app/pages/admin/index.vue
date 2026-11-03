@@ -231,6 +231,13 @@ function tapToMove(photo: Photo, index: number) {
 }
 
 const tagNames = computed(() => allTags.value.map(tag => tag.name))
+// Showing a playlist's photos here lists them in library order, so its own order is arranged on its page.
+const shownPlaylist = computed(() => tagFilter.value.startsWith('playlist:')
+  ? playlists.value.find(playlist => `playlist:${playlist.id}` === tagFilter.value)
+  : undefined)
+watch(shownPlaylist, (playlist) => {
+  if (playlist) arranging.value = false
+})
 
 watch(tagFilter, () => {
   selected.value = []
@@ -421,13 +428,19 @@ async function remove(photo: Photo) {
       >
         {{ selected.length ? 'Clear selection' : 'Select all shown' }}
       </UButton>
-      <UButton variant="soft" color="neutral" :disabled="busy" @click="arrangeByDate">
-        {{ confirmingArrange ? 'Replace my order with dates?' : 'Arrange by date' }}
-      </UButton>
-      <UButton variant="soft" color="neutral" :aria-pressed="arranging" @click="arranging = !arranging">
-        Rearrange
-      </UButton>
+      <template v-if="!shownPlaylist">
+        <UButton variant="soft" color="neutral" :disabled="busy" @click="arrangeByDate">
+          {{ confirmingArrange ? 'Replace my order with dates?' : 'Arrange by date' }}
+        </UButton>
+        <UButton variant="soft" color="neutral" :aria-pressed="arranging" @click="arranging = !arranging">
+          Rearrange
+        </UButton>
+      </template>
     </div>
+    <p v-if="shownPlaylist" class="text-muted">
+      These are the photos in {{ shownPlaylist.name }}, in library order. To change the playlist's order,
+      <NuxtLink :to="`/admin/playlists/${shownPlaylist.id}`" class="text-primary underline underline-offset-2">open the playlist</NuxtLink>.
+    </p>
 
     <section
       v-if="selected.length"

@@ -44,6 +44,24 @@ let librarySortable: Sortable | undefined
 
 const problem = (failure: unknown, fallback: string) => (failure as { statusMessage?: string }).statusMessage ?? fallback
 
+// Edits run one at a time, so a quick second drag can't race the first. If one fails, the page
+// reloads the playlist from the server rather than guessing what it holds.
+let queue: Promise<unknown> = Promise.resolve()
+function enqueue(task: () => Promise<void>, fallback: string) {
+  queue = queue.then(task).catch(async (failure) => {
+    error.value = problem(failure, fallback)
+    await load()
+  })
+  return queue
+}
+
+// A mouse drag can end with a click on the photo, which would pick it up. Ignore that click.
+let justDragged = false
+function dragged() {
+  justDragged = true
+  setTimeout(() => { justDragged = false }, 100)
+}
+
 async function load() {
   try {
     const [list, detail] = await Promise.all([
@@ -109,6 +127,7 @@ watch(playlistList, (element) => {
     ...SHARED,
     group: { name: 'playlist', pull: true, put: true },
     onEnd(event) {
+      dragged()
       if (event.from !== event.to) return // Dropped on the library: handled there.
       const { item, from, oldIndex, newIndex } = event
       if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return
@@ -133,6 +152,7 @@ watch(libraryList, (element) => {
     ...SHARED,
     sort: false,
     group: { name: 'playlist', pull: 'clone', put: true },
+    onEnd: dragged,
     onAdd(event) {
       // A playlist photo dragged back to the library: take it out of the playlist.
       const { item, from, oldIndex } = event
@@ -145,18 +165,14 @@ watch(libraryList, (element) => {
   } as Sortable.Options)
 }, { flush: 'post' })
 
-async function saveOrder(next: Photo[], message: string) {
-  const previous = photos.value
+function saveOrder(next: Photo[], message: string) {
   photos.value = next
   announcement.value = message
   error.value = ''
-  try {
-    await $fetch(`/api/playlists/${id}/order`, { method: 'POST', headers: apiHeaders, body: { photo_ids: next.map(photo => photo.id) } })
-  }
-  catch (failure) {
-    photos.value = previous
-    error.value = problem(failure, 'Couldn\'t save the new order.')
-  }
+  const order = next.map(photo => photo.id)
+  return enqueue(async () => {
+    await $fetch(`/api/playlists/${id}/order`, { method: 'POST', headers: apiHeaders, body: { photo_ids: order } })
+  }, 'Couldn\'t save the new order.')
 }
 
 function move(from: number, to: number) {
@@ -168,37 +184,32 @@ function move(from: number, to: number) {
 }
 
 /** Adds a library photo at a position, or moves it there if it's already in the playlist. */
-async function insert(photoId: string, at: number) {
+function insert(photoId: string, at: number) {
   const existing = photos.value.findIndex(photo => photo.id === photoId)
-  if (existing !== -1) return move(existing, Math.min(at, photos.value.length - 1))
+  // The drop position counted the copy being dragged in, so an earlier photo lands one sooner.
+  if (existing !== -1) return move(existing, Math.min(at - (existing < at ? 1 : 0), photos.value.length - 1))
 
   const photo = library.value.find(entry => entry.id === photoId)
   if (!photo) return
   error.value = ''
-  const previous = photos.value
+  const position = Math.min(at, photos.value.length)
   const next = [...photos.value]
-  next.splice(at, 0, photo)
+  next.splice(position, 0, photo)
   photos.value = next
-  try {
+  announcement.value = `${photo.filename} added at position ${position + 1} of ${next.length}.`
+  return enqueue(async () => {
     const result = await $fetch<{ playlist: Playlist }>(`/api/playlists/${id}/photos`, {
       method: 'POST',
       headers: apiHeaders,
-      body: { photo_ids: [photoId] },
+      body: { photo_ids: [photoId], at: position },
     })
     playlist.value = result.playlist
-    if (at < next.length - 1) {
-      await $fetch(`/api/playlists/${id}/order`, { method: 'POST', headers: apiHeaders, body: { photo_ids: next.map(entry => entry.id) } })
-    }
-    announcement.value = `${photo.filename} added at position ${at + 1} of ${next.length}.`
-  }
-  catch (failure) {
-    photos.value = previous
-    error.value = problem(failure, 'Couldn\'t add that photo.')
-  }
+  }, 'Couldn\'t add that photo.')
 }
 
 /** Tap a photo, then tap where it goes. */
 function tap(photo: Photo, index: number) {
+  if (justDragged) return
   const from = photos.value.findIndex(item => item.id === picked.value)
   if (from === -1) {
     picked.value = photo.id
@@ -208,24 +219,19 @@ function tap(photo: Photo, index: number) {
   move(from, index)
 }
 
-async function remove(photo: Photo) {
+function remove(photo: Photo) {
   error.value = ''
-  const previous = photos.value
   photos.value = photos.value.filter(item => item.id !== photo.id)
   if (picked.value === photo.id) picked.value = null
-  try {
+  announcement.value = `${photo.filename} taken out of the playlist. It's still in your library.`
+  return enqueue(async () => {
     const result = await $fetch<{ playlist: Playlist }>(`/api/playlists/${id}/remove`, {
       method: 'POST',
       headers: apiHeaders,
       body: { photo_ids: [photo.id] },
     })
     playlist.value = result.playlist
-    announcement.value = `${photo.filename} taken out of the playlist. It's still in your library.`
-  }
-  catch (failure) {
-    photos.value = previous
-    error.value = problem(failure, 'Couldn\'t take that photo out.')
-  }
+  }, 'Couldn\'t take that photo out.')
 }
 
 async function rename(event: Event) {

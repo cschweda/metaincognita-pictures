@@ -12,8 +12,9 @@ export default defineEventHandler(async (event) => {
   }
 
   // What to show becomes a frame's tag filter or playlist. "On this day" can't be a frame's whole
-  // filter, so the frame shows everything with today's memories first.
-  const changes = { filter: JSON.stringify({ tags: [] as string[], mode: 'any' }), playlist_id: null as string | null, memories_first: 0 }
+  // filter, so the frame shows everything with today's memories first. Otherwise the frame keeps
+  // its own memories-first setting.
+  const changes = { filter: JSON.stringify({ tags: [] as string[], mode: 'any' }), playlist_id: null as string | null, memories_first: null as number | null }
   if (show.startsWith(PLAYLIST_PREFIX)) {
     changes.playlist_id = requirePlaylist(show.slice(PLAYLIST_PREFIX.length)).id
   }
@@ -34,13 +35,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const update = db.prepare(
-    `UPDATE devices SET filter = ?, playlist_id = ?, memories_first = ?, sort = ? WHERE id = ?`,
+    `UPDATE devices SET filter = ?, playlist_id = ?, memories_first = COALESCE(?, memories_first), sort = ? WHERE id = ?`,
   )
   db.transaction(() => {
     for (const frame of frames) update.run(changes.filter, changes.playlist_id, changes.memories_first, sort, frame.id)
   })()
 
-  // An offline frame picks up its new settings when it next reaches the server.
+  // An offline frame catches up when it reconnects, or loads fresh when it starts.
   for (const frame of frames) pushToFrame(frame.id, 'control', 'restart')
   return {
     started: frames.filter(frame => isFrameConnected(frame.id)).map(frame => frame.name),

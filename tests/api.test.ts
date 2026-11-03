@@ -530,3 +530,34 @@ test('Start slideshow can target one frame and leave the others as they were', a
     assert.equal(device.sort, 'random')
   }
 })
+
+test('photos can be added to a playlist at a position, in one step', async () => {
+  const [m, n, o, p] = await Promise.all(['#611111', '#116111', '#111161', '#616161'].map((color, i) => upload(color, `at-${i}.jpg`)))
+  const { playlist } = await (await adminJson('/api/playlists', 'POST', { name: 'Positions', photo_ids: [m.photo.id, n.photo.id] })).json()
+  const order = async () =>
+    (await (await adminFetch(`/api/playlists/${playlist.id}/photos`)).json()).photos.map((photo: { id: string }) => photo.id)
+
+  assert.equal((await adminJson(`/api/playlists/${playlist.id}/photos`, 'POST', { photo_ids: [o.photo.id], at: -1 })).status, 400)
+  await adminJson(`/api/playlists/${playlist.id}/photos`, 'POST', { photo_ids: [o.photo.id], at: 1 })
+  assert.deepEqual(await order(), [m.photo.id, o.photo.id, n.photo.id])
+  await adminJson(`/api/playlists/${playlist.id}/photos`, 'POST', { photo_ids: [p.photo.id], at: 0 })
+  assert.deepEqual(await order(), [p.photo.id, m.photo.id, o.photo.id, n.photo.id])
+  const again = await (await adminJson(`/api/playlists/${playlist.id}/photos`, 'POST', { photo_ids: [m.photo.id], at: 3 })).json()
+  assert.equal(again.added, 0, 'a photo already in the playlist stays where it is')
+  assert.deepEqual(await order(), [p.photo.id, m.photo.id, o.photo.id, n.photo.id])
+})
+
+test('Start slideshow keeps a frame\'s memories-first setting unless On this day is chosen', async () => {
+  await pairDevice('Memories kept')
+  const { devices } = await (await adminFetch('/api/devices')).json()
+  const { id } = devices.find((item: { name: string }) => item.name === 'Memories kept')
+  const memoriesFirst = async () =>
+    (await (await adminFetch('/api/devices')).json()).devices.find((item: { id: string }) => item.id === id).memories_first
+
+  await adminJson(`/api/devices/${id}`, 'PATCH', { memories_first: true })
+  await adminJson('/api/slideshow/start', 'POST', { frame: id, show: '', order: 'random' })
+  assert.equal(await memoriesFirst(), true)
+  await adminJson(`/api/devices/${id}`, 'PATCH', { memories_first: false })
+  await adminJson('/api/slideshow/start', 'POST', { frame: id, show: 'memories', order: 'random' })
+  assert.equal(await memoriesFirst(), true)
+})

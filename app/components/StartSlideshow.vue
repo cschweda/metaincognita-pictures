@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The main action: a gold wall with the library's real photos in a dark matte. It starts a
 // slideshow on all frames, one frame, or full screen in this browser.
-const props = defineProps<{ photos: string[], count: number | null, tagName?: string, frames: Frame[] }>()
+const props = defineProps<{ photos: string[], count: number | null, tagName?: string, frames: Frame[], ready: boolean }>()
 const emit = defineEmits<{ started: [] }>()
 const tagFilter = useTagFilter()
 const order = useSlideshowOrder()
@@ -31,6 +31,8 @@ const detail = computed(() => {
   const where = target.value === 'screen'
     ? ''
     : target.value === 'all' ? ', on all frames' : `, on ${props.frames[0]?.name ?? 'a frame'}`
+  // On a frame, "On this day" shows everything, with today's photos first.
+  if (memories && target.value !== 'screen') return `All photos, with ${photos} from this date first${where}`
   if (memories) return `${photos} from this date, ${how}${where}`
   if (playlist) return `${photos} from ${props.tagName}, ${how}${where}`
   return props.tagName ? `${photos} tagged ${props.tagName}, ${how}${where}` : `All ${photos} ${how}${where}`
@@ -50,7 +52,7 @@ async function startOnFrames() {
     })
     result.value = [
       started.length ? `Started on ${names(started)}.` : '',
-      offline.length ? `${names(offline)} ${offline.length === 1 ? 'is' : 'are'} offline, and will switch on reconnecting.` : '',
+      offline.length ? `${names(offline)} ${offline.length === 1 ? 'is' : 'are'} offline, and will switch when ${offline.length === 1 ? 'it reconnects' : 'they reconnect'}.` : '',
     ].filter(Boolean).join(' ')
     emit('started')
   }
@@ -71,7 +73,7 @@ async function start() {
 </script>
 
 <template>
-  <button type="button" class="start" :disabled="count === 0 || starting" @click="start">
+  <button type="button" class="start" :disabled="count === 0 || starting || !ready" @click="start">
     <span class="words">
       <span class="title">{{ starting ? 'Starting…' : 'Start slideshow' }}</span>
       <span class="detail">{{ detail }}</span>

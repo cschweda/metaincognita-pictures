@@ -54,6 +54,10 @@ let failures = 0
 let paused = false
 let scheduled = false
 let lap = 0 // Each time the playlist starts again. A random order is reshuffled every lap.
+// Bumped when the admin starts a slideshow here, so a photo still loading from before is dropped.
+let epoch = 0
+let streamBroken = false
+class Superseded extends Error {}
 
 const url = (id: string, size = config.value?.variant) => `/v/${id}-${size}.webp`
 
@@ -76,16 +80,22 @@ async function fetchPage(after?: string, useSchedule = scheduled) {
   return $fetch<{ photos: Entry[], next: string | null }>('/api/frame/playlist', { query: { after, lap, ...options } })
 }
 
-async function reloadPlaylist() {
+/**
+ * Fetches the playlist again. With `keepPlace`, used when photos or settings change mid-lap, the
+ * frame carries on after the photo on screen instead of going back to the first one.
+ */
+async function reloadPlaylist({ keepPlace = false } = {}) {
   const useSchedule = inSchedule(config.value?.schedule, new Date())
   const page = await fetchPage(undefined, useSchedule)
   scheduled = useSchedule
   firstPhoto = undefined
   entries = page.photos
   nextPage = page.next
-  cursor = 0
+  const onScreen = slides[active.value]?.id
+  const place = keepPlace && onScreen ? entries.findIndex(entry => entry.id === onScreen) : -1
+  cursor = place + 1
   // A new lap must not open on the photo that ended the last one.
-  if (entries.length > 1 && entries[0]!.id === slides[active.value]?.id) {
+  if (place === -1 && entries.length > 1 && entries[0]!.id === onScreen) {
     ;[entries[0], entries[1]] = [entries[1]!, entries[0]!]
   }
   empty.value = entries.length === 0
@@ -114,10 +124,11 @@ function schedule(ms: number) {
   timer = setTimeout(advance, ms)
 }
 
-async function display(entry: Entry) {
+async function display(entry: Entry, since = epoch) {
   const src = url(entry.id)
   const backdrop = config.value?.backdrop === 'blur' ? url(entry.id, 640) : ''
   await Promise.all([preload(src), backdrop ? preload(backdrop) : undefined])
+  if (since !== epoch) throw new Superseded()
 
   const hidden = 1 - active.value
   slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
@@ -138,6 +149,7 @@ function warmNext() {
 }
 
 async function advance() {
+  const since = epoch
   sleeping.value = inSleepWindow()
   if (sleeping.value) return schedule(RETRY_MS)
 
@@ -160,9 +172,10 @@ async function advance() {
   if (entries.length - cursor < PAGE_LOW_WATER) await loadMore().catch(() => undefined)
 
   try {
-    await display(entry)
+    await display(entry, since)
   }
-  catch {
+  catch (error) {
+    if (error instanceof Superseded) return // A newer start already took over.
     // Not cached and no network, or deleted. Move on quickly, and pause if nothing loads.
     failures++
     return schedule(failures < entries.length ? SKIP_MS : RETRY_MS)
@@ -222,7 +235,7 @@ function listen() {
     clearTimeout(playlistTimer)
     playlistTimer = setTimeout(async () => {
       const wasEmpty = empty.value
-      await reloadPlaylist().catch(() => undefined)
+      await reloadPlaylist({ keepPlace: true }).catch(() => undefined)
       if (wasEmpty && !empty.value) schedule(0)
     }, PLAYLIST_DEBOUNCE_MS)
   })
@@ -255,12 +268,23 @@ function listen() {
     // Started from the admin: new settings, so fetch the playlist now and begin at its first photo.
     else if (data === 'restart') {
       paused = false
+      epoch++
       lap++
+      clearTimeout(timer)
       reloadPlaylist().then(() => schedule(empty.value ? RETRY_MS : 0)).catch(() => schedule(RETRY_MS))
     }
   })
   // A closed stream can mean the frame was removed, and the heartbeat handles that.
+  // Changes made while the stream was down, such as a slideshow started from the admin, were
+  // never received, so catch up as soon as it reconnects.
+  events.addEventListener('open', () => {
+    if (!streamBroken) return
+    streamBroken = false
+    loadConfig().catch(() => undefined)
+    reloadPlaylist({ keepPlace: true }).catch(() => undefined)
+  })
   events.onerror = () => {
+    streamBroken = true
     if (events?.readyState === EventSource.CLOSED) beat()
   }
 }

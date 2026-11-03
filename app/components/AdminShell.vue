@@ -55,12 +55,20 @@ const targetFrames = computed(() => target.value === 'all'
   ? frames.value
   : frames.value.filter(frame => frame.id === target.value))
 const remoteFrames = computed(() => targetFrames.value.filter(frame => frame.online))
+// Starting on frames saves what they show, so say exactly whose setup it replaces.
+const playOnHelp = computed(() => {
+  if (target.value === 'screen') return 'Full screen, in this browser'
+  if (target.value === 'all') return 'Replaces what every frame shows'
+  return `Replaces what ${targetFrames.value[0]?.name ?? 'this frame'} shows. Other frames carry on`
+})
+const targetsLoaded = ref(false)
+let targetTimer: ReturnType<typeof setInterval> | undefined
 
 async function loadTargets() {
   const [deviceList, playlistList] = await Promise.all([
     $fetch<{ devices: Frame[] }>('/api/devices'),
     $fetch<{ playlists: Playlist[] }>('/api/playlists'),
-  ])
+  ]).finally(() => { targetsLoaded.value = true })
   frames.value = deviceList.devices
   playlists.value = playlistList.playlists
   // With no frames, or a frame that has gone, play on this screen.
@@ -92,7 +100,9 @@ onMounted(() => {
   loadTags()
   loadHero()
   loadTargets()
+  targetTimer = setInterval(() => loadTargets().catch(() => undefined), 30_000) // Keeps online status and the remote current.
 })
+onBeforeUnmount(() => clearInterval(targetTimer))
 watch([tagFilter, tags], () => {
   if (props.hero) loadHero()
 })
@@ -135,7 +145,7 @@ async function logout() {
     </header>
 
     <section v-if="hero" aria-label="Slideshow" class="flex flex-col gap-2">
-      <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" :frames="targetFrames" @started="loadTargets" />
+      <StartSlideshow :photos="heroPhotos" :count="count" :tag-name="tagName" :frames="targetFrames" :ready="targetsLoaded" @started="loadTargets" />
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <UFormField label="Show">
           <USelect
@@ -154,7 +164,7 @@ async function logout() {
             class="w-full"
           />
         </UFormField>
-        <UFormField label="Play on" :help="target === 'screen' ? 'Full screen, in this browser' : 'Other frames carry on as they are'">
+        <UFormField label="Play on" :help="playOnHelp">
           <USelect
             v-model="target"
             :items="targetItems"

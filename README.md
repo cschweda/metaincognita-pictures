@@ -11,13 +11,14 @@ OpenMantel is part of the [metaincognita](https://metaincognita.com) collection 
 ## What it does
 
 - **Pairs like a TV streaming stick.** A new frame shows a code. Enter it on your phone and the frame is set up for good, with no keyboard and no password on the frame.
-- **Works as a remote.** From your phone, skip, go back, pause, or send any photo to a frame. Change what a frame shows, its matte color, timing, captions, and sleep hours, or schedule a preset for certain days and times. Frames update immediately. Add the admin to your home screen and it opens like an app.
+- **Works as a remote.** From your phone, start a slideshow on every frame or just one, leaving the others as they are. Skip, go back, pause, or send any photo to a frame. Change what a frame shows, its matte color, timing, captions, and sleep hours, or schedule a preset for certain days and times. Frames update immediately. Add the admin to your home screen and it opens like an app.
 - **Never crops.** Portrait, square, and panoramic photos always show in full, on a matte or a blurred backdrop, with optional captions.
-- **Plays forever, in your choice of order.** Slideshows start again after the last photo. In random order, each pass is reshuffled. In sequence, they follow the order you arranged.
+- **Plays forever, in your choice of order.** Slideshows start again after the last photo. In random order, each pass is reshuffled. In sequence, they follow the order you arranged, or the playlist's order.
 - **Organizes by tag.** Upload in batches, tag photos, save presets such as "Holidays", and search by file name or caption. Arrange photos by dragging, or on a phone by tapping a photo and then tapping where it goes.
+- **Builds playlists.** Drag photos from your library into a playlist such as "Kitchen", in the order you want. Give each frame its own playlist, or share one between frames. A playlist isn't tied to a frame, so it survives moving a frame to another room.
 - **Brings back memories.** Show photos taken on today's date in past years, on a frame or in a slideshow.
 - **Keeps playing offline.** Each frame keeps a copy of the photos it has shown or fetched ahead, so it carries on without a network, even after a restart.
-- **Handles iPhone photos.** HEIC files work, photos are rotated correctly, and location data is stripped from everything a frame receives.
+- **Handles iPhone photos.** Upload straight from your phone: open the admin in Safari, tap the upload area, and choose **Photo Library**. HEIC files work, photos are rotated correctly, and location data is stripped from everything a frame receives.
 - **Plays anywhere you're logged in.** Any browser where you're logged in can run a full-screen slideshow, with no pairing.
 - **Stays yours.** Download every original, with its tags and captions, at any time. The Stats page shows server health and roughly how many more photos will fit, and the Technical details page shows the exact version running.
 
@@ -59,6 +60,8 @@ curl -fsSL https://raw.githubusercontent.com/cschweda/openmantel/main/scripts/se
 On a Mac, add `SLEEP_START=22:30 SLEEP_END=06:30` to turn the monitor off overnight. Scripts for Ubuntu, Windows, and Raspberry Pi are in [`scripts/`](scripts/).
 
 The frame then shows a code. On your phone, log in, choose **Pair a frame**, and enter the code. Check that the screen size and IP address match the frame, give it a name, and approve it.
+
+To retire a frame, or before moving it to another server, press **Deactivate** on its card in **Frames**. It goes back to showing a code, and has to be paired again to show photos.
 
 So far the Mac script has only been dry-run, and the Ubuntu, Windows, and Raspberry Pi scripts haven't been tried on real frames, so reports are welcome. If a frame's disk is encrypted, as on a Mac with FileVault, someone has to log in after a power cut before it shows photos.
 

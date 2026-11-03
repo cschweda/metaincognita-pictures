@@ -74,6 +74,12 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- Start slideshow says whose setup it replaces, keeps each frame's memories-first setting unless On this day is chosen, and stays disabled until the frame list has loaded. On a frame, On this day is described as all photos with today's first, which is what it shows. The frame list and remote refresh every 30 seconds.
+- A frame catches up on changes it missed while its connection was down, as soon as it reconnects.
+- Editing the playlist or settings a frame is showing no longer sends it back to the first photo, and a slideshow started while a photo was loading can't be overridden by that photo.
+- Playlist edits run one at a time and a dropped photo is added in a single request, so quick drags can't race each other, and any failure reloads the playlist from the server. Dragging a photo that's already in the playlist lands where it's dropped.
+- With a playlist chosen under Show, the photo grid hides Rearrange and Arrange by date, which change the library order, and links to the playlist's page.
+- README covers playlists, starting on one frame, Deactivate, and uploading from an iPhone.
 - `rebuild.sh` refuses to start while another rebuild is running in the same folder, and stops before restarting if a build is missing its server dependencies. Two overlapping runs had swapped in a broken build.
 - README rewritten for accuracy and clarity.
 - Slideshows never stop. After the last photo they start again, with a fresh shuffle each time round in random order, and a new round never opens on the photo that just ended the last one.
