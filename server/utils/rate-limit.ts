@@ -20,39 +20,48 @@ export function ipBucket(ip: string): string {
 export const LOCK_AFTER_FAILURES = 5
 export const LOCKOUT_MS = 5 * 60_000
 const FORGET_AFTER_MS = 15 * 60_000 // Wrong guesses this old no longer count toward a lockout.
-const GLOBAL = { limit: 20, ms: 60 * 60_000 }
+// A flood of wrong passwords from many addresses doesn't lock anyone out, which would let an
+// attacker keep the owner out. It cuts each address's tries to one until the flood passes, so a
+// right password on the first try still works.
+const FLOOD = { failures: 20, ms: 60 * 60_000 }
 
 const failures = new Map<string, { count: number, last: number, lockedUntil: number }>()
-let globalFailures: number[] = []
-let globalLockedUntil = 0
+let recentFailures: number[] = []
+
+function underFlood(now: number): boolean {
+  recentFailures = recentFailures.filter(time => now - time < FLOOD.ms)
+  return recentFailures.length >= FLOOD.failures
+}
 
 /** Milliseconds until this address may try a password again, or 0. */
 export function loginLockout(key: string, now = Date.now()): number {
   const entry = failures.get(key)
-  const own = entry && entry.lockedUntil > now ? entry.lockedUntil - now : 0
-  const everyone = globalLockedUntil > now ? globalLockedUntil - now : 0
-  return Math.max(own, everyone)
+  return entry && entry.lockedUntil > now ? entry.lockedUntil - now : 0
 }
 
-/** Records a wrong password. Returns the tries left before a lockout, and the lockout if it started. */
-export function recordLoginFailure(key: string, now = Date.now()): { triesLeft: number, lockedMs: number } {
+/**
+ * Counts an attempt before the password is checked, so attempts sent all at once can't each slip
+ * past the limit while the others are still being checked. A right password gives it back.
+ * Returns the tries left after this one, and the lockout it started, if any.
+ */
+export function reserveLoginAttempt(key: string, { trusted = false } = {}, now = Date.now()): { triesLeft: number, lockedMs: number, at: number } {
   const entry = failures.get(key)
   const count = entry && now - entry.last < FORGET_AFTER_MS && entry.lockedUntil <= now ? entry.count + 1 : 1
-  const locked = count >= LOCK_AFTER_FAILURES
+  const limit = !trusted && underFlood(now) ? 1 : LOCK_AFTER_FAILURES
+  const locked = count >= limit
   failures.set(key, { count: locked ? 0 : count, last: now, lockedUntil: locked ? now + LOCKOUT_MS : 0 })
-
-  globalFailures = [...globalFailures.filter(time => now - time < GLOBAL.ms), now]
-  if (globalFailures.length >= GLOBAL.limit) {
-    globalLockedUntil = now + LOCKOUT_MS
-    globalFailures = []
-  }
+  recentFailures.push(now)
   if (failures.size > MAX_KEYS) trim(now)
-  return { triesLeft: locked ? 0 : LOCK_AFTER_FAILURES - count, lockedMs: loginLockout(key, now) }
+  return { triesLeft: locked ? 0 : limit - count, lockedMs: locked ? LOCKOUT_MS : 0, at: now }
 }
 
-/** After a correct password, this address starts again with five tries. */
-export function clearLoginAttempts(key: string): void {
+/** A right password: this address starts again with its full tries, and the attempt is refunded. */
+export function clearLoginAttempts(key: string, at?: number): void {
   failures.delete(key)
+  if (at !== undefined) {
+    const index = recentFailures.lastIndexOf(at)
+    if (index !== -1) recentFailures.splice(index, 1)
+  }
 }
 
 /** The message for a locked-out caller, with the time left in whole minutes or seconds. */

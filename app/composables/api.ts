@@ -43,6 +43,8 @@ export interface Frame {
   schedule_start: string | null
   schedule_end: string | null
   playlist_id: string | null
+  paused: boolean
+  online_since: string | null
 }
 
 export interface Playlist {

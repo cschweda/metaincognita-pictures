@@ -24,13 +24,22 @@ function rotateToken(deviceId: string): string | null {
 
 export default defineEventHandler(async (event) => {
   const deviceId = event.context.device!.id
-  const body = await readBody<{ photo_id?: unknown }>(event)
+  const body = await readBody<{ photo_id?: unknown, paused?: unknown }>(event)
   // The admin's browser builds an image address from this, so only a real photo id is kept.
   const claimed = typeof body?.photo_id === 'string' && PHOTO_ID.test(body.photo_id) ? body.photo_id : null
   const photoId = claimed && db.prepare(`SELECT 1 FROM photos WHERE id = ?`).get(claimed) ? claimed : null
 
-  db.prepare(`UPDATE devices SET last_seen_at = datetime('now'), current_photo_id = ? WHERE id = ?`)
-    .run(photoId, deviceId)
+  // A frame beats at least once a minute. A gap of three minutes means it was off or out of reach,
+  // so its "online for" starts again.
+  db.prepare(
+    `UPDATE devices SET
+       online_since = CASE WHEN last_seen_at IS NULL OR last_seen_at < datetime('now', '-3 minutes') OR online_since IS NULL
+         THEN datetime('now') ELSE online_since END,
+       last_seen_at = datetime('now'),
+       current_photo_id = ?,
+       paused = ?
+     WHERE id = ?`,
+  ).run(photoId, body?.paused === true ? 1 : 0, deviceId)
 
   const token = rotateToken(deviceId)
   if (token) {

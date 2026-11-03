@@ -69,8 +69,36 @@ const confirmingDeactivate = ref(false)
 const deactivating = ref(false)
 const status = ref('')
 
+// Playing or paused, shown on the remote. A press shows at once, then the frame's own report confirms it.
+const pausedNow = ref(props.frame.paused)
+watch(() => props.frame.paused, (value) => { pausedNow.value = value })
+const pressed = ref<string | null>(null)
+let pressTimer: ReturnType<typeof setTimeout> | undefined
+
+// "Online for" ticks along between refreshes.
+const now = ref(Date.now())
+let clock: ReturnType<typeof setInterval> | undefined
+onMounted(() => { clock = setInterval(() => { now.value = Date.now() }, 30_000) })
+onBeforeUnmount(() => {
+  clearInterval(clock)
+  clearTimeout(pressTimer)
+})
+
+function since(sql: string | null) {
+  if (!sql) return null
+  const minutes = Math.max(0, Math.floor((now.value - new Date(`${sql.replace(' ', 'T')}Z`).getTime()) / 60_000))
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor(minutes / 60) % 24
+  if (days) return `${days} ${days === 1 ? 'day' : 'days'}, ${hours} h`
+  if (minutes >= 60) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+  return minutes < 1 ? 'less than a minute' : `${minutes} min`
+}
+
 const lastSeen = computed(() => {
-  if (props.frame.online) return 'Online now'
+  if (props.frame.online) {
+    const uptime = since(props.frame.online_since)
+    return uptime ? `Online for ${uptime}` : 'Online now'
+  }
   const seen = props.frame.last_seen_at
   return seen ? `Last seen ${new Date(`${seen.replace(' ', 'T')}Z`).toLocaleString()}` : 'Not seen yet'
 })
@@ -119,10 +147,17 @@ async function deletePreset(id: string) {
 
 async function control(action: string) {
   error.value = ''
+  const before = pausedNow.value
+  if (action === 'pause') pausedNow.value = true
+  if (action === 'resume' || action === 'next' || action === 'previous') pausedNow.value = action === 'resume' ? false : pausedNow.value
+  pressed.value = action
+  clearTimeout(pressTimer)
+  pressTimer = setTimeout(() => { pressed.value = null }, 700)
   try {
     await $fetch(`/api/devices/${props.frame.id}/control`, { method: 'POST', headers: apiHeaders, body: { action } })
   }
   catch {
+    pausedNow.value = before
     error.value = 'That frame is offline, so it can\'t be controlled right now.'
   }
 }
@@ -184,11 +219,37 @@ function toggleDay(day: number) {
       </div>
     </div>
 
-    <div v-if="frame.online" class="grid grid-cols-4 gap-2" role="group" aria-label="Remote control">
-      <UButton variant="soft" color="neutral" icon="i-lucide-skip-back" aria-label="Previous photo" class="justify-center" @click="control('previous')" />
-      <UButton variant="soft" color="neutral" icon="i-lucide-pause" aria-label="Pause" class="justify-center" @click="control('pause')" />
-      <UButton variant="soft" color="neutral" icon="i-lucide-play" aria-label="Resume" class="justify-center" @click="control('resume')" />
-      <UButton variant="soft" color="neutral" icon="i-lucide-skip-forward" aria-label="Next photo" class="justify-center" @click="control('next')" />
+    <div v-if="frame.online" class="flex flex-col gap-2">
+      <p class="flex items-center gap-2 text-sm font-medium" role="status">
+        <span class="size-2.5 rounded-full" :class="pausedNow ? 'bg-warning' : 'bg-success animate-pulse'" aria-hidden="true" />
+        {{ pausedNow ? 'Paused on this photo' : `Playing, a new photo every ${intervalItems.find(item => item.value === frame.interval_sec)?.label ?? `${frame.interval_sec} seconds`}` }}
+      </p>
+      <div class="grid grid-cols-4 gap-2" role="group" aria-label="Remote control">
+        <UButton :variant="pressed === 'previous' ? 'solid' : 'soft'" color="neutral" icon="i-lucide-skip-back" aria-label="Previous photo" class="justify-center transition" @click="control('previous')" />
+        <UButton
+          :variant="pausedNow ? 'solid' : 'soft'"
+          :color="pausedNow ? 'primary' : 'neutral'"
+          icon="i-lucide-pause"
+          :aria-pressed="pausedNow"
+          class="justify-center"
+          @click="control('pause')"
+        >
+          <span class="hidden sm:inline">{{ pausedNow ? 'Paused' : 'Pause' }}</span>
+          <span class="sr-only sm:hidden">Pause</span>
+        </UButton>
+        <UButton
+          :variant="pausedNow ? 'soft' : 'solid'"
+          :color="pausedNow ? 'neutral' : 'primary'"
+          icon="i-lucide-play"
+          :aria-pressed="!pausedNow"
+          class="justify-center"
+          @click="control('resume')"
+        >
+          <span class="hidden sm:inline">{{ pausedNow ? 'Play' : 'Playing' }}</span>
+          <span class="sr-only sm:hidden">Play</span>
+        </UButton>
+        <UButton :variant="pressed === 'next' ? 'solid' : 'soft'" color="neutral" icon="i-lucide-skip-forward" aria-label="Next photo" class="justify-center transition" @click="control('next')" />
+      </div>
     </div>
 
     <div class="flex flex-col gap-2">

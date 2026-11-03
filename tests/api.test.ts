@@ -976,3 +976,41 @@ test('five wrong passwords lock that address out for five minutes, and only that
   assert.equal((await from('198.51.100.7', PASSWORD)).status, 429, 'even the right password waits out the lockout')
   assert.equal((await from('198.51.100.8', PASSWORD)).status, 200, 'other addresses can still log in')
 })
+
+test('a frame reports playing or paused, and how long it has been online', async () => {
+  const { photo } = await upload('#446688', 'state.jpg')
+  const { cookie } = await pairDevice('State frame')
+  const beat = (body: unknown) => fetch(`${BASE}/api/frame/heartbeat`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify(body) })
+  const state = async () => (await (await adminFetch('/api/devices')).json()).devices.find((d: { name: string }) => d.name === 'State frame')
+
+  await beat({ photo_id: photo.id, paused: false })
+  const playing = await state()
+  assert.equal(playing.paused, false)
+  assert.equal(playing.current_photo_id, photo.id)
+  assert.ok(playing.online_since, 'online since is recorded')
+  await beat({ photo_id: photo.id, paused: true })
+  const paused = await state()
+  assert.equal(paused.paused, true)
+  assert.equal(paused.online_since, playing.online_since, 'a steady frame keeps its online-since time')
+})
+
+test('wrong passwords sent all at once still lock out after five', async () => {
+  const attempts = await Promise.all(Array.from({ length: 12 }, () => fetch(`${BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { ...JSON_BODY, 'X-Real-IP': '198.51.100.20' },
+    body: JSON.stringify({ password: 'wrong-password' }),
+  }).then(response => response.status)))
+  assert.ok(attempts.filter(status => status === 401).length <= 4, `at most four plain refusals, got ${attempts.join()}`)
+  assert.ok(attempts.filter(status => status === 429).length >= 8)
+})
+
+// This leaves the server in a flood of wrong guesses, so it runs last.
+test('a flood of wrong passwords from many addresses never locks out the right password', async () => {
+  for (let i = 0; i < 20; i++) {
+    await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': `203.0.113.${i + 1}` }, body: JSON.stringify({ password: 'wrong' }) })
+  }
+  const owner = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.50' }, body: JSON.stringify({ password: PASSWORD }) })
+  assert.equal(owner.status, 200, 'the right password works on the first try during a flood')
+  const guess = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { ...JSON_BODY, 'X-Real-IP': '192.0.2.51' }, body: JSON.stringify({ password: 'wrong' }) })
+  assert.equal(guess.status, 429, 'but a new address gets only one try')
+})

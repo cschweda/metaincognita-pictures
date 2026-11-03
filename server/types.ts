@@ -54,6 +54,8 @@ export interface Device {
   schedule_start: string | null
   schedule_end: string | null
   playlist_id: string | null
+  paused: number
+  online_since: string | null
 }
 
 export interface Pairing {

@@ -69,6 +69,7 @@ let failures = 0
 let paused = false
 let scheduled = false
 let lap = 0 // Each time the playlist starts again. A random order is reshuffled every lap.
+const upNext = new Set<string>() // New photos waiting to be shown next.
 // Bumped when the admin starts a slideshow here, so a photo still loading from before is dropped.
 let epoch = 0
 let streamBroken = false
@@ -99,16 +100,30 @@ async function fetchPage(after?: string, useSchedule = scheduled) {
  * Fetches the playlist again. With `keepPlace`, used when photos or settings change mid-lap, the
  * frame carries on after the photo on screen instead of going back to the first one.
  */
-async function reloadPlaylist({ keepPlace = false } = {}) {
+async function reloadPlaylist({ keepPlace = false } = {}): Promise<{ onScreenGone: boolean }> {
   const useSchedule = inSchedule(config.value?.schedule, new Date())
   const page = await fetchPage(undefined, useSchedule)
   scheduled = useSchedule
   firstPhoto = undefined
+  const known = new Set(entries.map(entry => entry.id))
   entries = page.photos
   nextPage = page.next
   const onScreen = slides[active.value]?.id
   const place = keepPlace && onScreen ? entries.findIndex(entry => entry.id === onScreen) : -1
   cursor = place + 1
+  // Photos that just arrived, such as a new upload, play next rather than waiting for their turn.
+  // They stay queued across later refetches until they've been shown.
+  if (keepPlace && known.size > 0) {
+    for (const entry of entries) if (!known.has(entry.id)) upNext.add(entry.id)
+  }
+  for (const id of upNext) if (!entries.some(entry => entry.id === id)) upNext.delete(id)
+  if (keepPlace && upNext.size && upNext.size < entries.length) {
+    const queued = entries.filter(entry => upNext.has(entry.id))
+    const rest = entries.filter(entry => !upNext.has(entry.id))
+    const at = Math.max(0, rest.findIndex(entry => entry.id === onScreen) + 1)
+    entries = [...rest.slice(0, at), ...queued, ...rest.slice(at)]
+    cursor = at
+  }
   // A new lap must not open on the photo that ended the last one.
   if (place === -1 && entries.length > 1 && entries[0]!.id === onScreen) {
     ;[entries[0], entries[1]] = [entries[1]!, entries[0]!]
@@ -116,6 +131,8 @@ async function reloadPlaylist({ keepPlace = false } = {}) {
   empty.value = entries.length === 0
   if (entries.length) sendToWorker({ type: 'listed', urls: entries.map(entry => new URL(url(entry.id)!, location.origin).pathname) })
   warmNext()
+  // The photo on screen was deleted, hidden, or is no longer in what this frame shows.
+  return { onScreenGone: Boolean(onScreen) && place === -1 && entries.length > 0 }
 }
 
 async function loadMore() {
@@ -153,9 +170,9 @@ async function display(entry: Entry, since = epoch) {
     clearTimeout(infoTimer)
   }
   slides[hidden] = { src, backdrop, caption: entry.caption, id: entry.id }
-  const firstSlide = !slides[1 - hidden]?.id
+  upNext.delete(entry.id)
   active.value = hidden
-  if (firstSlide) beat() // So the admin's thumbnail fills in right away.
+  beat() // So the admin's thumbnail always matches the photo on screen.
   sendToWorker({ type: 'shown', url: src })
 }
 
@@ -244,7 +261,8 @@ async function start() {
 async function beat() {
   if (config.value?.preview) return
   try {
-    await $fetch('/api/frame/heartbeat', { method: 'POST', body: { photo_id: slides[active.value]?.id || null } })
+    // Held for its details counts as paused: the photo isn't changing.
+    await $fetch('/api/frame/heartbeat', { method: 'POST', body: { photo_id: slides[active.value]?.id || null, paused: paused || heldForInfo } })
     offline.value = false
   }
   catch (error) {
@@ -255,11 +273,15 @@ async function beat() {
 function listen() {
   events = new EventSource('/api/frame/events')
   events.addEventListener('playlist-changed', () => {
-    clearTimeout(playlistTimer)
+    // At most one refetch every 1.5 seconds. A burst of changes, such as a demo loading a photo a
+    // second, must not keep putting it off.
+    if (playlistTimer) return
     playlistTimer = setTimeout(async () => {
+      playlistTimer = undefined
       const wasEmpty = empty.value
-      await reloadPlaylist({ keepPlace: true }).catch(() => undefined)
-      if (wasEmpty && !empty.value) schedule(0)
+      const result = await reloadPlaylist({ keepPlace: true }).catch(() => null)
+      // Move on at once when the photo on screen has gone, or photos arrived in an empty frame.
+      if ((wasEmpty && !empty.value) || (result?.onScreenGone && !paused && !heldForInfo)) schedule(0)
     }, PLAYLIST_DEBOUNCE_MS)
   })
   events.addEventListener('config-changed', () => {
@@ -283,10 +305,12 @@ function listen() {
     else if (data === 'pause') {
       paused = true
       clearTimeout(timer)
+      beat() // The admin's remote shows it paused.
     }
     else if (data === 'resume') {
       paused = false
       schedule(0)
+      beat()
     }
     // Started from the admin: new settings, so fetch the playlist now and begin at its first photo.
     else if (data === 'restart') {
@@ -321,6 +345,7 @@ async function toggleInfo() {
   if (!paused) {
     clearTimeout(timer)
     heldForInfo = true
+    beat()
   }
   clearTimeout(infoTimer)
   infoTimer = setTimeout(closeInfo, INFO_TIMEOUT_MS) // Nobody's reading it any more, so carry on.
@@ -337,6 +362,7 @@ function closeInfo() {
   infoOpen.value = false
   if (heldForInfo) {
     heldForInfo = false
+    beat()
     if (!paused) schedule((config.value?.interval_sec ?? 60) * 1000)
   }
 }

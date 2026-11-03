@@ -22,7 +22,11 @@ async function loadPresets() {
 onMounted(async () => {
   await Promise.all([loadFrames(), loadPresets(), loadPlaylists(), loadTags()])
   loading.value = false
-  timer = setInterval(loadFrames, 30_000) // Keeps "showing now" fresh.
+  // Every 5 seconds while the page is in front of you, so the thumbnail, playing or paused, and
+  // online status match the frames. Nothing is fetched while it's in the background.
+  timer = setInterval(() => {
+    if (document.visibilityState === 'visible') loadFrames().catch(() => undefined)
+  }, 5_000)
 })
 onBeforeUnmount(() => clearInterval(timer))
 

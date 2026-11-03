@@ -39,6 +39,8 @@ export function publicDevice(device: Device) {
     show_captions: device.show_captions === 1,
     schedule_preset_id: device.schedule_preset_id,
     playlist_id: device.playlist_id,
+    paused: device.paused === 1,
+    online_since: device.online_since,
     schedule_days: JSON.parse(device.schedule_days) as number[],
     schedule_start: device.schedule_start,
     schedule_end: device.schedule_end,
